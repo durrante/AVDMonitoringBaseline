@@ -50,9 +50,18 @@ An AVD deployment with AVD Insights configured per the AVD portal's Insights con
 
 > **Note on the memory alerts:** the Available Memory alerts are now scheduled query rules against the `Perf` table instead of platform metric alerts. **If you deployed the default AVD Insights DCR, no extra configuration is needed** — `\Memory\Available Mbytes` is part of its standard counter set. The change was made because the platform metric emits a `0` sample as a session host powers on (common with autoscale), which fired false "memory critically low" alerts. The KQL version skips hosts that haven't been reporting performance data for the full evaluation window, so hosts are only evaluated once they're properly up.
 
+## For MSPs: identifying the customer / tenant an alert came from
+
+Alert emails all arrive from Microsoft's `azure-noreply` sender, and host pool names are often identical across tenants. Two parameters make the origin obvious:
+
+- **`Alert Name Prefix`** (1–5 chars, e.g. `CON01`) — flows into every alert rule name and display name, which appears in the **email subject line** (e.g. `Azure: Activated Severity: 2 CON01-HostPool-VM-High CPU 85 Percent (hostpool01)`). Use a unique prefix per customer.
+- **`Customer / Tenant Name`** (new in this fork, optional, up to 64 chars) — stamps `Customer: <name>` at the top of every alert description, which appears in the **email body** and in the alert details in the portal, ITSM connectors and webhook payloads (common alert schema `description` field).
+
+Set both at deployment time (both are fields in the portal deployment UI). Additionally, every log-based alert already carries `HostPool`, `ComputerName` and `VMresourceGroup` dimensions, and the alert payload includes the subscription — so routing rules in your PSA/ITSM tooling can also key off those.
+
 ## Alerts Table
 
-The number of alert rules created may be multiple based on severity and/or additional volume or storage name designators. [(Excel Table)](docs/img/Avd/alerts.xlsx)
+The number of alert rules created may be multiple based on severity and/or additional volume or storage name designators. Download as [CSV](docs/alerts-table.csv).
 
 | Name                                                                      | Threshold(s) (Severity)    |  Signal Type   |  Frequency          |  # Alert Rules |
 |---                                                                        |---                         |---             |---                  |---          |
@@ -65,7 +74,8 @@ The number of alert rules created may be multiple based on severity and/or addit
 | AVD-HostPool-VM-FSLogix Profile Less Than n% Free Space (hostpoolname)    | 2% (1) / 5% (2)            | Log Analytics  |  5 min              |  2/hostpool |
 | AVD-HostPool-VM-FSLogix Profile Failed due to Network Issue (hostpoolname)| (1)                        | Log Analytics  |  5 min              |  1/hostpool |
 | AVD-HostPool-VM-FSLogix Profile Service Disabled (hostpoolname)           | (1)                        | Log Analytics  |  5 min              |  1/hostpool |
-| AVD-HostPool-VM-Health Check Failure (hostpoolname)                       | (1)                        | Log Analytics  |  5 min              |  1/hostpool |
+| AVD-HostPool-VM-FSLogix Profile Disk Attached to another VM (hostpoolname) (3.) | (2)                  | Log Analytics  |  5 min              |  1/hostpool |
+| AVD-HostPool-VM-Health Check Failure (hostpoolname) (3.)                  | (1)                        | Log Analytics  |  5 min              |  1/hostpool |
 | AVD-HostPool-VM-High CPU nn Percent (hostpoolname) (3.)                   | 95 (1) / 85 (2)            | Metric Alerts  |  5 min (1) / 30 min (2) |  2/hostpool |
 | AVD-HostPool-VM-Local Disk Free Space n% (hostpoolname)                   | 5 (1) / 10 (2)             | Log Analytics  |  15 min             |  2/hostpool |
 | AVD-HostPool-VM-Personal Assigned Not Healthy (hostpoolname)              | Any are Sev 1              | Log Analytics  |  5 min              |  1/hostpool |

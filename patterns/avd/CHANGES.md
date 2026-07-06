@@ -54,7 +54,15 @@ Dimensions are now: `ComputerName`, `RenderedDescription`, `UserName`, `ProfileP
 
 Evaluation cadence changed from **every 5 minutes over a 15-minute window** to **every 30 minutes over a 1-hour window**. A session host averaging over 85% CPU for a full hour is a genuine capacity signal; brief spikes (logon storms, app launches) previously produced noisy Sev2 alerts. The Sev1 `High CPU 95 Percent` alert is unchanged (every 5 minutes over 15 minutes) so critical CPU exhaustion still alerts quickly.
 
-### 5. Version bump
+### 5. Customer / tenant identification for MSPs (new `CustomerName` parameter)
+
+Alert emails all come from Microsoft's `azure-noreply` sender, and host pool names can be identical across tenants — a problem for MSPs monitoring many customers. A new **optional `CustomerName` parameter** (portal UI field "Customer / Tenant Name") stamps `Customer: <name>` at the top of every alert description, which surfaces in the alert email body, the portal alert details, and the `description` field of the common alert schema (ITSM/webhook payloads). Combined with a per-customer `AlertNamePrefix` (which appears in the email subject via the alert rule name), every notification is unambiguously attributable to a customer. Leaving `CustomerName` empty produces the original description header, so existing parameter files keep working unchanged.
+
+### 6. `_ArtifactsLocation` default repointed to this fork
+
+The default scripts URL pointed at `Azure/azure-monitor-baseline-alerts`; it now points at this repository so deployments pull the runbook scripts (`Get-HostPoolInfo.ps1`, `Get-StorAcctInfo.ps1`) from the maintained fork.
+
+### 7. Version bump
 
 `AlertDescriptionHeader` and docs updated from v2.2.2 to v2.3.0.
 

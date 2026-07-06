@@ -1,0 +1,28 @@
+Name,Threshold(s) (Severity),Signal Type,Frequency,# Alert Rules,Notes
+AVD-HostPool-Capacity,95% (1) / 85% (2) / 50% (3),Log Analytics,5 min,3/hostpool,Based on associated Automation Account / Runbook
+AVD-HostPool-Disconnected User over n Hours (hostpoolname),24 (1) / 72 (2),Log Analytics,1 hour,2/hostpool,
+AVD-HostPool-No Resources Available (hostpoolname),Any are Sev1,Log Analytics,15 min,1/hostpool,
+AVD-HostPool-VM-Available Memory Less Than nGB (hostpoolname),1gb (Sev1) / 2gb (Sev2),Log Analytics,5 min,2/hostpool,Modified in this fork: converted from metric to KQL alert to avoid power-on false positives
+AVD-HostPool-VM-FSLogix Profile DiskCompactFailed (hostpoolname),(2),Log Analytics,5 min,1/hostpool,
+AVD-HostPool-VM-FSLogix Profile FailedAttachVHD (hostpoolname),(1),Log Analytics,5 min,1/hostpool,
+AVD-HostPool-VM-FSLogix Profile Less Than n% Free Space (hostpoolname),2% (1) / 5% (2),Log Analytics,5 min,2/hostpool,
+AVD-HostPool-VM-FSLogix Profile Failed due to Network Issue (hostpoolname),(1),Log Analytics,5 min,1/hostpool,
+AVD-HostPool-VM-FSLogix Profile Service Disabled (hostpoolname),(1),Log Analytics,5 min,1/hostpool,
+AVD-HostPool-VM-FSLogix Profile Disk Attached to another VM (hostpoolname),(2),Log Analytics,5 min,1/hostpool,Modified in this fork: surfaces UserName and ProfilePath dimensions
+AVD-HostPool-VM-Health Check Failure (hostpoolname),(1),Log Analytics,5 min,1/hostpool,Modified in this fork: maps health checks 11 (TURNRelay) and 19 (AADJoined)
+AVD-HostPool-VM-High CPU nn Percent (hostpoolname),95 (1) / 85 (2),Metric Alerts,5 min (Sev1) / 30 min (Sev2),2/hostpool,Modified in this fork: 85% alert evaluates every 30 min over 1 hour
+AVD-HostPool-VM-Local Disk Free Space n% (hostpoolname),5 (1) / 10 (2),Log Analytics,15 min,2/hostpool,
+AVD-HostPool-VM-Personal Assigned Not Healthy (hostpoolname),Any are Sev 1,Log Analytics,5 min,1/hostpool,
+AVD-HostPool-VM-OS Disk Bandwidth Avg n% (hostpoolname),95 (1) / 85 (2),Metric Alerts,5 min,2/hostpool,
+AVD-HostPool-VM-User Connection Failed (hostpoolname),Any are Sev 3,Log Analytics,15 min,1/hostpool,
+AVD-HostPool-VM-Missing Critical Updates (hostpoolname),Any are Sev 1,Log Analytics,1 day,1/hostpool,
+AVD-Storage-Low Space on ANF Share-XX Percent Remaining-{volumename},5 / 15,Metric Alerts,1 hour,2/vol,
+AVD-Storage-Low Space on Azure File Share-X% Remaining-{volumename},5 / 15,Log Analytics,1 hour,2/share,Based on associated Automation Account / Runbook
+AVD-Storage-Over XXms Latency for Storage Act-{storacctname},100ms / 50ms,Metric Alerts,15 min,2/stor acct,
+AVD-Storage-Over XXms Latency Between Client-Storage-{storacctname},100ms / 50ms,Metric Alerts,15 min,2/stor acct,
+AVD-Storage-Possible Throttling Due to High IOPs-{storacctname},na / custom,Metric Alerts,15 min,1/stor acct,See storage throttling alert docs; Standard and Premium values incorporated
+AVD-Storage-Azure Files Availability-{storacctname},99 / na,Metric Alerts,5 min,1/stor acct,
+AVD-ServiceHealth-Health Advisory,na,Service Health,na,4,Severity cannot be changed from Verbose
+AVD-ServiceHealth-Planned Maintenance,na,Service Health,na,4,Severity cannot be changed from Verbose
+AVD-ServiceHealth-Security,na,Service Health,na,4,Severity cannot be changed from Verbose
+AVD-ServiceHealth-Service Issue,na,Service Health,na,4,Severity cannot be changed from Verbose

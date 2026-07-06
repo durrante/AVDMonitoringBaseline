@@ -5,13 +5,13 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "15152247382386276003"
+      "templateHash": "16067341666239359131"
     }
   },
   "parameters": {
     "_ArtifactsLocation": {
       "type": "string",
-      "defaultValue": "https://raw.githubusercontent.com/Azure/azure-monitor-baseline-alerts/main/patterns/avd/scripts/",
+      "defaultValue": "https://raw.githubusercontent.com/durrante/AVDMonitoringBaseline/main/patterns/avd/scripts/",
       "metadata": {
         "description": "Location of needed scripts to deploy solution."
       }
@@ -35,6 +35,13 @@
       "defaultValue": "AVD",
       "metadata": {
         "description": "Alert Name Prefix (Dash will be added after prefix for you.)"
+      }
+    },
+    "CustomerName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional: Customer, client or tenant name included at the top of every alert description. Useful for MSPs monitoring multiple tenants to identify which customer an alert originated from, as host pool names can be identical across tenants."
       }
     },
     "AllResourcesSameRG": {
@@ -154,7 +161,7 @@
       }
     ],
     "ActionGroupName": "[format('ag-avdmetrics-{0}-{1}-{2}', parameters('Environment'), parameters('Location'), uniqueString(subscription().displayName))]",
-    "AlertDescriptionHeader": "Automated AVD Alert Deployment Solution (v2.3.0)\n",
+    "AlertDescriptionHeader": "[if(empty(parameters('CustomerName')), 'Automated AVD Alert Deployment Solution (v2.3.0)\n', format('Customer: {0}\nAutomated AVD Alert Deployment Solution (v2.3.0)\n', parameters('CustomerName')))]",
     "AutomationAccountName": "[format('aa-avdmetrics-{0}-{1}-{2}', parameters('Environment'), parameters('Location'), parameters('AlertNamePrefix'))]",
     "CloudEnvironment": "[environment().name]",
     "ResourceGroupCreate": "[if(equals(parameters('ResourceGroupStatus'), 'New'), true(), false())]",

@@ -10,6 +10,7 @@ To update your current deployment with the content from the latest release, plea
 - **Health Check Failure alert** now recognises health checks 11 (`TURNRelayAccessHealthCheck`) and 19 (`AADJoinedHealthCheck`).
 - **FSLogix "Profile Disk Attached to another VM"** alert surfaces `UserName` and the profile disk `ProfilePath` in the alert dimensions.
 - **High CPU 85 Percent** alert re-tuned: evaluated every 30 minutes over a 1-hour window (was every 5 minutes over 15 minutes) to reduce noise from short CPU spikes.
+- **New optional `CustomerName` parameter** for MSPs: stamps `Customer: <name>` into every alert description so multi-tenant alert notifications are attributable to a customer (host pool names are often identical across tenants).
 - Full details in the [change log](../patterns/avd/CHANGES.md).
 
 ## 2026-02-12 — v2.2.2 (adopted from upstream PR [#839](https://github.com/Azure/azure-monitor-baseline-alerts/pull/839))

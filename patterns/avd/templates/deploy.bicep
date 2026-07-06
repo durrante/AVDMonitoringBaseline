@@ -6,7 +6,7 @@ param SetEnabled bool = false
  */
 
 @description('Location of needed scripts to deploy solution.')
-param _ArtifactsLocation string = 'https://raw.githubusercontent.com/Azure/azure-monitor-baseline-alerts/main/patterns/avd/scripts/'
+param _ArtifactsLocation string = 'https://raw.githubusercontent.com/durrante/AVDMonitoringBaseline/main/patterns/avd/scripts/'
 
 @description('SaS token if needed for script location.')
 @secure()
@@ -17,6 +17,9 @@ param optoutTelemetry bool = false
 
 @description('Alert Name Prefix (Dash will be added after prefix for you.)')
 param AlertNamePrefix string = 'AVD'
+
+@description('Optional: Customer, client or tenant name included at the top of every alert description. Useful for MSPs monitoring multiple tenants to identify which customer an alert originated from, as host pool names can be identical across tenants.')
+param CustomerName string = ''
 
 @description('Flag to determine if AVD VMs and AVD resources are all in the same Resource Group.')
 param AllResourcesSameRG bool = true
@@ -73,7 +76,7 @@ param ANFVolumeResourceIds array = []
 param Tags object = {}
 
 var ActionGroupName = 'ag-avdmetrics-${Environment}-${Location}-${uniqueString(subscription().displayName)}'
-var AlertDescriptionHeader = 'Automated AVD Alert Deployment Solution (v2.3.0)\n' // DESCRIPTION HEADER AND VERSION <-----------------------------
+var AlertDescriptionHeader = empty(CustomerName) ? 'Automated AVD Alert Deployment Solution (v2.3.0)\n' : 'Customer: ${CustomerName}\nAutomated AVD Alert Deployment Solution (v2.3.0)\n' // DESCRIPTION HEADER AND VERSION <-----------------------------
 var AutomationAccountName = 'aa-avdmetrics-${Environment}-${Location}-${AlertNamePrefix}'
 var CloudEnvironment = environment().name
 var ResourceGroupCreate = ResourceGroupStatus == 'New' ? true : false
