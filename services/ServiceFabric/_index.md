@@ -1,4 +1,0 @@
----
-title: ServiceFabric
-hidden: true
----

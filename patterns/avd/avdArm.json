@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.40.2.10011",
-      "templateHash": "9088644665468054590"
+      "version": "0.44.1.10279",
+      "templateHash": "15152247382386276003"
     }
   },
   "parameters": {
@@ -154,7 +154,7 @@
       }
     ],
     "ActionGroupName": "[format('ag-avdmetrics-{0}-{1}-{2}', parameters('Environment'), parameters('Location'), uniqueString(subscription().displayName))]",
-    "AlertDescriptionHeader": "Automated AVD Alert Deployment Solution (v2.2.2)\n",
+    "AlertDescriptionHeader": "Automated AVD Alert Deployment Solution (v2.3.0)\n",
     "AutomationAccountName": "[format('aa-avdmetrics-{0}-{1}-{2}', parameters('Environment'), parameters('Location'), parameters('AlertNamePrefix'))]",
     "CloudEnvironment": "[environment().name]",
     "ResourceGroupCreate": "[if(equals(parameters('ResourceGroupStatus'), 'New'), true(), false())]",
@@ -965,7 +965,7 @@
         "criteria": {
           "allOf": [
             {
-              "query": "          Event\n          | where EventLog == \"Microsoft-FSLogix-Apps/Operational\"\n          | where EventLevelName == \"Warning\"\n          | where EventID == 51\n          | parse _ResourceId with \"/subscriptions/\" subscription \"/resourcegroups/\" ResourceGroup \"/providers/microsoft.compute/virtualmachines/\" ComputerName\n          | extend ComputerName=tolower(ComputerName)\n          | project ComputerName, RenderedDescription, UserName, subscription, ResourceGroup, TimeGenerated\n          | join kind = inner\n              (\n                WVDAgentHealthStatus\n                | where _ResourceId contains \"xHostPoolNamex\"\n                | parse _ResourceId with \"/subscriptions/\" subscriptionAgentHealth \"/resourcegroups/\" ResourceGroupAgentHealth \"/providers/microsoft.desktopvirtualization/hostpools/\" HostPool\n                | parse SessionHostResourceId with \"/subscriptions/\" VMsubscription \"/resourceGroups/\" VMresourceGroup \"/providers/Microsoft.Compute/virtualMachines/\" ComputerName\n                | extend ComputerName=tolower(ComputerName)\n                | summarize arg_max(TimeGenerated,*) by ComputerName\n                | project VMresourceGroup, ComputerName, HostPool\n              ) on ComputerName\n          | project TimeGenerated, ComputerName, HostPool, VMresourceGroup, UserName, RenderedDescription\n          ",
+              "query": "          Event\n          | where EventLog == \"Microsoft-FSLogix-Apps/Operational\"\n          | where EventLevelName == \"Warning\"\n          | where EventID == 51\n          | parse _ResourceId with \"/subscriptions/\" subscription \"/resourcegroups/\" ResourceGroup \"/providers/microsoft.compute/virtualmachines/\" ComputerName\n          | extend ComputerName=tolower(ComputerName)\n          | extend ProfilePath = extract(@\"<Param>([\\\\\\\\][^<]+\\.VHDX?)<\\/Param>\", 1, ParameterXml)\n          | project ComputerName, UserName, ProfilePath, RenderedDescription, subscription, ResourceGroup, TimeGenerated\n          | join kind = inner\n              (\n                WVDAgentHealthStatus\n                | where _ResourceId contains \"xHostPoolNamex\"\n                | parse _ResourceId with \"/subscriptions/\" subscriptionAgentHealth \"/resourcegroups/\" ResourceGroupAgentHealth \"/providers/microsoft.desktopvirtualization/hostpools/\" HostPool\n                | parse SessionHostResourceId with \"/subscriptions/\" VMsubscription \"/resourceGroups/\" VMresourceGroup \"/providers/Microsoft.Compute/virtualMachines/\" ComputerName\n                | extend ComputerName=tolower(ComputerName)\n                | summarize arg_max(TimeGenerated,*) by ComputerName\n                | project VMresourceGroup, ComputerName, HostPool\n              ) on ComputerName\n          | project TimeGenerated, ComputerName, HostPool, VMresourceGroup, UserName, ProfilePath, RenderedDescription\n          ",
               "timeAggregation": "Count",
               "dimensions": [
                 {
@@ -984,6 +984,13 @@
                 },
                 {
                   "name": "UserName",
+                  "operator": "Include",
+                  "values": [
+                    "*"
+                  ]
+                },
+                {
+                  "name": "ProfilePath",
                   "operator": "Include",
                   "values": [
                     "*"
@@ -1016,6 +1023,96 @@
         }
       },
       {
+        "name": "[format('{0}-HP-VM-AvailMemLess-2GB-xHostPoolNamex', parameters('AlertNamePrefix'))]",
+        "displayName": "[format('{0}-HostPool-VM-Available Memory Less Than 2GB (xHostPoolNamex)', parameters('AlertNamePrefix'))]",
+        "description": "[format('{0}Potential performance issues for users on the same host due to moderately low memory. Log query based alert that only evaluates session hosts reporting performance data for the full evaluation window, avoiding false positives while a VM is powering on. Investigate session host memory usage per user and/or memory requirements and adjust if/as needed for xHostPoolNamex. Check user active vs. disconnected status.', variables('AlertDescriptionHeader'))]",
+        "severity": 2,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT15M",
+        "criteria": {
+          "allOf": [
+            {
+              "query": "          Perf\n          | where TimeGenerated > ago(15m)\n          | where ObjectName == \"Memory\" and CounterName == \"Available MBytes\"\n          | parse _ResourceId with \"/subscriptions/\" subscription \"/resourcegroups/\" ResourceGroup \"/providers/microsoft.compute/virtualmachines/\" ComputerName\n          | extend ComputerName=tolower(ComputerName)\n          | summarize AvailableMB = round(avg(CounterValue), 0), FirstSample = min(TimeGenerated), TimeGenerated = max(TimeGenerated) by ComputerName, subscription, ResourceGroup\n          | where FirstSample <= ago(10m)\n          | where AvailableMB <= 2048\n          | join kind = inner\n              (\n                WVDAgentHealthStatus\n                | where _ResourceId contains \"xHostPoolNamex\"\n                | parse _ResourceId with \"/subscriptions/\" subscriptionAgentHealth \"/resourcegroups/\" ResourceGroupAgentHealth \"/providers/microsoft.desktopvirtualization/hostpools/\" HostPool\n                | parse SessionHostResourceId with \"/subscriptions/\" VMsubscription \"/resourceGroups/\" VMresourceGroup \"/providers/Microsoft.Compute/virtualMachines/\" ComputerName\n                | extend ComputerName=tolower(ComputerName)\n                | summarize arg_max(TimeGenerated,*) by ComputerName\n                | project VMresourceGroup, ComputerName, HostPool\n              ) on ComputerName\n          | project TimeGenerated, ComputerName, HostPool, VMresourceGroup, AvailableMB\n          ",
+              "timeAggregation": "Count",
+              "dimensions": [
+                {
+                  "name": "ComputerName",
+                  "operator": "Include",
+                  "values": [
+                    "*"
+                  ]
+                },
+                {
+                  "name": "VMresourceGroup",
+                  "operator": "Include",
+                  "values": [
+                    "*"
+                  ]
+                },
+                {
+                  "name": "HostPool",
+                  "operator": "Include",
+                  "values": [
+                    "*"
+                  ]
+                }
+              ],
+              "operator": "GreaterThanOrEqual",
+              "threshold": 1,
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 1,
+                "minFailingPeriodsToAlert": 1
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[format('{0}-HP-VM-AvailMemLess-1GB-xHostPoolNamex', parameters('AlertNamePrefix'))]",
+        "displayName": "[format('{0}-HostPool-VM-Available Memory Less Than 1GB (xHostPoolNamex)', parameters('AlertNamePrefix'))]",
+        "description": "[format('{0}Potential performance issues for users on the same host due to critically low memory. Log query based alert that only evaluates session hosts reporting performance data for the full evaluation window, avoiding false positives while a VM is powering on. Investigate session host memory usage per user and/or memory requirements and adjust if/as needed for xHostPoolNamex. Check user active vs. disconnected status.', variables('AlertDescriptionHeader'))]",
+        "severity": 1,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT15M",
+        "criteria": {
+          "allOf": [
+            {
+              "query": "          Perf\n          | where TimeGenerated > ago(15m)\n          | where ObjectName == \"Memory\" and CounterName == \"Available MBytes\"\n          | parse _ResourceId with \"/subscriptions/\" subscription \"/resourcegroups/\" ResourceGroup \"/providers/microsoft.compute/virtualmachines/\" ComputerName\n          | extend ComputerName=tolower(ComputerName)\n          | summarize AvailableMB = round(avg(CounterValue), 0), FirstSample = min(TimeGenerated), TimeGenerated = max(TimeGenerated) by ComputerName, subscription, ResourceGroup\n          | where FirstSample <= ago(10m)\n          | where AvailableMB <= 1024\n          | join kind = inner\n              (\n                WVDAgentHealthStatus\n                | where _ResourceId contains \"xHostPoolNamex\"\n                | parse _ResourceId with \"/subscriptions/\" subscriptionAgentHealth \"/resourcegroups/\" ResourceGroupAgentHealth \"/providers/microsoft.desktopvirtualization/hostpools/\" HostPool\n                | parse SessionHostResourceId with \"/subscriptions/\" VMsubscription \"/resourceGroups/\" VMresourceGroup \"/providers/Microsoft.Compute/virtualMachines/\" ComputerName\n                | extend ComputerName=tolower(ComputerName)\n                | summarize arg_max(TimeGenerated,*) by ComputerName\n                | project VMresourceGroup, ComputerName, HostPool\n              ) on ComputerName\n          | project TimeGenerated, ComputerName, HostPool, VMresourceGroup, AvailableMB\n          ",
+              "timeAggregation": "Count",
+              "dimensions": [
+                {
+                  "name": "ComputerName",
+                  "operator": "Include",
+                  "values": [
+                    "*"
+                  ]
+                },
+                {
+                  "name": "VMresourceGroup",
+                  "operator": "Include",
+                  "values": [
+                    "*"
+                  ]
+                },
+                {
+                  "name": "HostPool",
+                  "operator": "Include",
+                  "values": [
+                    "*"
+                  ]
+                }
+              ],
+              "operator": "GreaterThanOrEqual",
+              "threshold": 1,
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 1,
+                "minFailingPeriodsToAlert": 1
+              }
+            }
+          ]
+        }
+      },
+      {
         "name": "[format('{0}-HP-VM-HlthChkFailure-xHostPoolNamex', parameters('AlertNamePrefix'))]",
         "displayName": "[format('{0}-HostPool-VM-Health Check Failure (xHostPoolNamex)', parameters('AlertNamePrefix'))]",
         "description": "[format('{0}VM is available for use but one of the dependent resources is in a failed state for hostpool xHostPoolNamex', variables('AlertDescriptionHeader'))]",
@@ -1026,7 +1123,7 @@
         "criteria": {
           "allOf": [
             {
-              "query": "// HealthChecks of SessionHost \n// Renders a summary of SessionHost health status. \nlet MapToDesc = (idx: long) {\n    case(idx == 0, \"DomainJoin\",\n    idx == 1, \"DomainTrust\",\n    idx == 2, \"FSLogix\",\n    idx == 3, \"SxSStack\",\n    idx == 4, \"URLCheck\",\n    idx == 5, \"GenevaAgent\",\n    idx == 6, \"DomainReachable\",\n    idx == 7, \"WebRTCRedirector\",\n    idx == 8, \"SxSStackEncryption\",\n    idx == 9, \"IMDSReachable\",\n    idx == 10, \"MSIXPackageStaging\",\n    \"InvalidIndex\")\n};\nWVDAgentHealthStatus\n| where TimeGenerated > ago(10m)\n| where Status != 'Available'\n| where AllowNewSessions = True\n| extend CheckFailed = parse_json(SessionHostHealthCheckResult)\n| mv-expand CheckFailed\n| where CheckFailed.AdditionalFailureDetails.ErrorCode != 0\n| extend HealthCheckName = tolong(CheckFailed.HealthCheckName)\n| extend HealthCheckResult = tolong(CheckFailed.HealthCheckResult)\n| extend HealthCheckDesc = MapToDesc(HealthCheckName)\n| where HealthCheckDesc != 'InvalidIndex'\n| where _ResourceId contains \"xHostPoolNamex\"\n| parse _ResourceId with \"/subscriptions/\" subscription \"/resourcegroups/\" HostPoolResourceGroup \"/providers/microsoft.desktopvirtualization/hostpools/\" HostPool\n| parse SessionHostResourceId with \"/subscriptions/\" HostSubscription \"/resourceGroups/\" SessionHostRG \"/providers/Microsoft.Compute/virtualMachines/\" SessionHostName\n",
+              "query": "// HealthChecks of SessionHost \n// Renders a summary of SessionHost health status. \nlet MapToDesc = (idx: long) {\n    case(idx == 0, \"DomainJoin\",\n    idx == 1, \"DomainTrust\",\n    idx == 2, \"FSLogix\",\n    idx == 3, \"SxSStack\",\n    idx == 4, \"URLCheck\",\n    idx == 5, \"GenevaAgent\",\n    idx == 6, \"DomainReachable\",\n    idx == 7, \"WebRTCRedirector\",\n    idx == 8, \"SxSStackEncryption\",\n    idx == 9, \"IMDSReachable\",\n    idx == 10, \"MSIXPackageStaging\",\n    idx == 11, \"TURNRelayAccessHealthCheck\",\n    idx == 19, \"AADJoinedHealthCheck\",\n    \"InvalidIndex\")\n};\nWVDAgentHealthStatus\n| where TimeGenerated > ago(10m)\n| where Status != 'Available'\n| where AllowNewSessions = True\n| extend CheckFailed = parse_json(SessionHostHealthCheckResult)\n| mv-expand CheckFailed\n| where CheckFailed.AdditionalFailureDetails.ErrorCode != 0\n| extend HealthCheckName = tolong(CheckFailed.HealthCheckName)\n| extend HealthCheckResult = tolong(CheckFailed.HealthCheckResult)\n| extend HealthCheckDesc = MapToDesc(HealthCheckName)\n| where HealthCheckDesc != 'InvalidIndex'\n| where _ResourceId contains \"xHostPoolNamex\"\n| parse _ResourceId with \"/subscriptions/\" subscription \"/resourcegroups/\" HostPoolResourceGroup \"/providers/microsoft.desktopvirtualization/hostpools/\" HostPool\n| parse SessionHostResourceId with \"/subscriptions/\" HostSubscription \"/resourceGroups/\" SessionHostRG \"/providers/Microsoft.Compute/virtualMachines/\" SessionHostName\n",
               "timeAggregation": "Count",
               "dimensions": [
                 {
@@ -1497,10 +1594,10 @@
         {
           "name": "[format('{0}-HP-VM-HighCPU-85-Prcnt-xHostPoolNamex', parameters('AlertNamePrefix'))]",
           "displayName": "[format('{0}-HostPool-VM-High CPU 85 Percent (xHostPoolNamex)', parameters('AlertNamePrefix'))]",
-          "description": "[format('{0}Potential performance issues for users on the same host due to moderately limited CPU (Avarage over 5 mins.) Investigate session host CPU usage per user and/or CPU requirements and adjust if/as needed for xHostPoolNamex.  Check user active vs. disconnected status.', variables('AlertDescriptionHeader'))]",
+          "description": "[format('{0}Potential performance issues for users on the same host due to moderately limited CPU (Average over 1 hour.) Investigate session host CPU usage per user and/or CPU requirements and adjust if/as needed for xHostPoolNamex.  Check user active vs. disconnected status.', variables('AlertDescriptionHeader'))]",
           "severity": 2,
-          "evaluationFrequency": "PT5M",
-          "windowSize": "PT15M",
+          "evaluationFrequency": "PT30M",
+          "windowSize": "PT1H",
           "criteria": {
             "allOf": [
               {
@@ -1532,52 +1629,6 @@
                 "metricNamespace": "microsoft.compute/virtualmachines",
                 "metricName": "Percentage CPU",
                 "operator": "GreaterThan",
-                "timeAggregation": "Average",
-                "criterionType": "StaticThresholdCriterion"
-              }
-            ],
-            "odata.type": "Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria"
-          },
-          "targetResourceType": "microsoft.compute/virtualmachines"
-        },
-        {
-          "name": "[format('{0}-HP-VM-AvailMemLess-2GB-xHostPoolNamex', parameters('AlertNamePrefix'))]",
-          "displayName": "[format('{0}-HostPool-VM-Available Memory Less Than 2GB (xHostPoolNamex)', parameters('AlertNamePrefix'))]",
-          "description": "[format('{0}Potential performance issues for users on the same host due to moderately low memory. Investigate session host memory usage per user and/or memory requirements and adjust if/as needed for xHostPoolNamex.  Check user active vs. disconnected status.', variables('AlertDescriptionHeader'))]",
-          "severity": 2,
-          "evaluationFrequency": "PT5M",
-          "windowSize": "PT15M",
-          "criteria": {
-            "allOf": [
-              {
-                "threshold": 2147483648,
-                "name": "Metric1",
-                "metricNamespace": "microsoft.compute/virtualmachines",
-                "metricName": "Available Memory Bytes",
-                "operator": "LessThanOrEqual",
-                "timeAggregation": "Average",
-                "criterionType": "StaticThresholdCriterion"
-              }
-            ],
-            "odata.type": "Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria"
-          },
-          "targetResourceType": "microsoft.compute/virtualmachines"
-        },
-        {
-          "name": "[format('{0}-HP-VM-AvailMemLess-1GB-xHostPoolNamex', parameters('AlertNamePrefix'))]",
-          "displayName": "[format('{0}-HostPool-VM-Available Memory Less Than 1GB (xHostPoolNamex)', parameters('AlertNamePrefix'))]",
-          "description": "[format('{0}Potential performance issues for users on the same host due to critically low memory. Investigate session host memory usage per user and/or memory requirements and adjust if/as needed for xHostPoolNamex.  Check user active vs. disconnected status.', variables('AlertDescriptionHeader'))]",
-          "severity": 1,
-          "evaluationFrequency": "PT5M",
-          "windowSize": "PT15M",
-          "criteria": {
-            "allOf": [
-              {
-                "threshold": 1073741824,
-                "name": "Metric1",
-                "metricNamespace": "microsoft.compute/virtualmachines",
-                "metricName": "Available Memory Bytes",
-                "operator": "LessThanOrEqual",
                 "timeAggregation": "Average",
                 "criterionType": "StaticThresholdCriterion"
               }
@@ -1791,8 +1842,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.40.2.10011",
-              "templateHash": "3925256501453616379"
+              "version": "0.44.1.10279",
+              "templateHash": "17559424473956010552"
             }
           },
           "resources": []
@@ -1828,8 +1879,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.40.2.10011",
-              "templateHash": "15442036475161945200"
+              "version": "0.44.1.10279",
+              "templateHash": "18053068177427008591"
             }
           },
           "parameters": {
@@ -1937,8 +1988,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "16008103586228898067"
+                      "version": "0.44.1.10279",
+                      "templateHash": "421264083529232556"
                     }
                   },
                   "parameters": {
@@ -2067,8 +2118,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "7899712724866294850"
+                      "version": "0.44.1.10279",
+                      "templateHash": "15917545844916875307"
                     }
                   },
                   "parameters": {
@@ -2439,8 +2490,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.40.2.10011",
-              "templateHash": "17145295581056717964"
+              "version": "0.44.1.10279",
+              "templateHash": "18365586021221166451"
             }
           },
           "parameters": {
@@ -2827,8 +2878,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "17920777777328059583"
+                      "version": "0.44.1.10279",
+                      "templateHash": "16207361936877091085"
                     }
                   },
                   "parameters": {
@@ -2981,8 +3032,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "14105389406690354060"
+                      "version": "0.44.1.10279",
+                      "templateHash": "4940624240746473689"
                     }
                   },
                   "parameters": {
@@ -3174,8 +3225,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "18367768711065850579"
+                      "version": "0.44.1.10279",
+                      "templateHash": "6899596246137815966"
                     }
                   },
                   "parameters": {
@@ -3376,8 +3427,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "1488577008748284425"
+                      "version": "0.44.1.10279",
+                      "templateHash": "18132539513575056189"
                     }
                   },
                   "parameters": {
@@ -3525,8 +3576,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "4256887630511228012"
+                      "version": "0.44.1.10279",
+                      "templateHash": "1473611401814343107"
                     }
                   },
                   "parameters": {
@@ -3660,8 +3711,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "7050853650420354932"
+                      "version": "0.44.1.10279",
+                      "templateHash": "15749511852444233508"
                     }
                   },
                   "parameters": {
@@ -3799,8 +3850,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "6716393973460139245"
+                      "version": "0.44.1.10279",
+                      "templateHash": "13861732314999284600"
                     }
                   },
                   "parameters": {
@@ -3982,8 +4033,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "14330857376679531918"
+                      "version": "0.44.1.10279",
+                      "templateHash": "17805334168459663403"
                     }
                   },
                   "parameters": {
@@ -4453,8 +4504,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "13943586234971057984"
+                      "version": "0.44.1.10279",
+                      "templateHash": "7524391674550267550"
                     }
                   },
                   "parameters": {
@@ -4650,8 +4701,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.40.2.10011",
-                              "templateHash": "11079124594684328235"
+                              "version": "0.44.1.10279",
+                              "templateHash": "16524095417951428651"
                             }
                           },
                           "parameters": {
@@ -4785,8 +4836,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.40.2.10011",
-                              "templateHash": "8590917713049347896"
+                              "version": "0.44.1.10279",
+                              "templateHash": "12670237723662091291"
                             }
                           },
                           "parameters": {
@@ -4999,8 +5050,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "8943701872197996554"
+                      "version": "0.44.1.10279",
+                      "templateHash": "1355598087717600278"
                     }
                   },
                   "parameters": {
@@ -5199,8 +5250,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.40.2.10011",
-              "templateHash": "3784662604710733181"
+              "version": "0.44.1.10279",
+              "templateHash": "15106819574919984971"
             }
           },
           "parameters": {
@@ -5785,8 +5836,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.40.2.10011",
-              "templateHash": "3784662604710733181"
+              "version": "0.44.1.10279",
+              "templateHash": "15106819574919984971"
             }
           },
           "parameters": {
@@ -6372,8 +6423,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.40.2.10011",
-              "templateHash": "3784662604710733181"
+              "version": "0.44.1.10279",
+              "templateHash": "15106819574919984971"
             }
           },
           "parameters": {
@@ -6963,8 +7014,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.40.2.10011",
-              "templateHash": "3784662604710733181"
+              "version": "0.44.1.10279",
+              "templateHash": "15106819574919984971"
             }
           },
           "parameters": {
@@ -7585,8 +7636,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.40.2.10011",
-              "templateHash": "7359055779620089877"
+              "version": "0.44.1.10279",
+              "templateHash": "9381398849998933817"
             }
           },
           "parameters": {
@@ -7689,8 +7740,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "11610262927856933711"
+                      "version": "0.44.1.10279",
+                      "templateHash": "5101654350988512096"
                     }
                   },
                   "parameters": {
@@ -7882,8 +7933,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.40.2.10011",
-                              "templateHash": "18369364286962424979"
+                              "version": "0.44.1.10279",
+                              "templateHash": "3432361773345157742"
                             }
                           },
                           "parameters": {
@@ -8207,8 +8258,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "15149056477058740914"
+                      "version": "0.44.1.10279",
+                      "templateHash": "13472671712863344366"
                     }
                   },
                   "parameters": {
@@ -8315,8 +8366,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.40.2.10011",
-                              "templateHash": "17730200544743984590"
+                              "version": "0.44.1.10279",
+                              "templateHash": "13997445113786692986"
                             }
                           },
                           "parameters": {
@@ -8553,8 +8604,8 @@
                                   "metadata": {
                                     "_generator": {
                                       "name": "bicep",
-                                      "version": "0.40.2.10011",
-                                      "templateHash": "8935948216446679198"
+                                      "version": "0.44.1.10279",
+                                      "templateHash": "4261100999276962005"
                                     }
                                   },
                                   "parameters": {
@@ -8887,8 +8938,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "15149056477058740914"
+                      "version": "0.44.1.10279",
+                      "templateHash": "13472671712863344366"
                     }
                   },
                   "parameters": {
@@ -8995,8 +9046,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.40.2.10011",
-                              "templateHash": "17730200544743984590"
+                              "version": "0.44.1.10279",
+                              "templateHash": "13997445113786692986"
                             }
                           },
                           "parameters": {
@@ -9233,8 +9284,8 @@
                                   "metadata": {
                                     "_generator": {
                                       "name": "bicep",
-                                      "version": "0.40.2.10011",
-                                      "templateHash": "8935948216446679198"
+                                      "version": "0.44.1.10279",
+                                      "templateHash": "4261100999276962005"
                                     }
                                   },
                                   "parameters": {
@@ -9564,8 +9615,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "15686720107039624356"
+                      "version": "0.44.1.10279",
+                      "templateHash": "10541838076809898169"
                     }
                   },
                   "parameters": {
@@ -9665,8 +9716,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.40.2.10011",
-                              "templateHash": "17730200544743984590"
+                              "version": "0.44.1.10279",
+                              "templateHash": "13997445113786692986"
                             }
                           },
                           "parameters": {
@@ -9903,8 +9954,8 @@
                                   "metadata": {
                                     "_generator": {
                                       "name": "bicep",
-                                      "version": "0.40.2.10011",
-                                      "templateHash": "8935948216446679198"
+                                      "version": "0.44.1.10279",
+                                      "templateHash": "4261100999276962005"
                                     }
                                   },
                                   "parameters": {
@@ -10234,8 +10285,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "15809327344872916645"
+                      "version": "0.44.1.10279",
+                      "templateHash": "17656598697742474752"
                     }
                   },
                   "parameters": {
@@ -10339,8 +10390,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.40.2.10011",
-                              "templateHash": "17730200544743984590"
+                              "version": "0.44.1.10279",
+                              "templateHash": "13997445113786692986"
                             }
                           },
                           "parameters": {
@@ -10577,8 +10628,8 @@
                                   "metadata": {
                                     "_generator": {
                                       "name": "bicep",
-                                      "version": "0.40.2.10011",
-                                      "templateHash": "8935948216446679198"
+                                      "version": "0.44.1.10279",
+                                      "templateHash": "4261100999276962005"
                                     }
                                   },
                                   "parameters": {
@@ -10908,8 +10959,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "1842017552449254956"
+                      "version": "0.44.1.10279",
+                      "templateHash": "12461395144695022930"
                     }
                   },
                   "parameters": {
@@ -11014,8 +11065,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.40.2.10011",
-                              "templateHash": "17730200544743984590"
+                              "version": "0.44.1.10279",
+                              "templateHash": "13997445113786692986"
                             }
                           },
                           "parameters": {
@@ -11252,8 +11303,8 @@
                                   "metadata": {
                                     "_generator": {
                                       "name": "bicep",
-                                      "version": "0.40.2.10011",
-                                      "templateHash": "8935948216446679198"
+                                      "version": "0.44.1.10279",
+                                      "templateHash": "4261100999276962005"
                                     }
                                   },
                                   "parameters": {
@@ -11602,8 +11653,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "3708088431587591868"
+                      "version": "0.44.1.10279",
+                      "templateHash": "17465861697916151759"
                     }
                   },
                   "parameters": {
@@ -11832,8 +11883,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.40.2.10011",
-                              "templateHash": "12186729275238182699"
+                              "version": "0.44.1.10279",
+                              "templateHash": "3838798696610396523"
                             }
                           },
                           "parameters": {
@@ -12159,8 +12210,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "17060846849339439538"
+                      "version": "0.44.1.10279",
+                      "templateHash": "15697931683597583924"
                     }
                   },
                   "parameters": {
@@ -12269,8 +12320,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.40.2.10011",
-                              "templateHash": "3708088431587591868"
+                              "version": "0.44.1.10279",
+                              "templateHash": "17465861697916151759"
                             }
                           },
                           "parameters": {
@@ -12499,8 +12550,8 @@
                                   "metadata": {
                                     "_generator": {
                                       "name": "bicep",
-                                      "version": "0.40.2.10011",
-                                      "templateHash": "12186729275238182699"
+                                      "version": "0.44.1.10279",
+                                      "templateHash": "3838798696610396523"
                                     }
                                   },
                                   "parameters": {
@@ -12844,8 +12895,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "17060846849339439538"
+                      "version": "0.44.1.10279",
+                      "templateHash": "15697931683597583924"
                     }
                   },
                   "parameters": {
@@ -12954,8 +13005,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.40.2.10011",
-                              "templateHash": "3708088431587591868"
+                              "version": "0.44.1.10279",
+                              "templateHash": "17465861697916151759"
                             }
                           },
                           "parameters": {
@@ -13184,8 +13235,8 @@
                                   "metadata": {
                                     "_generator": {
                                       "name": "bicep",
-                                      "version": "0.40.2.10011",
-                                      "templateHash": "12186729275238182699"
+                                      "version": "0.44.1.10279",
+                                      "templateHash": "3838798696610396523"
                                     }
                                   },
                                   "parameters": {
@@ -13553,8 +13604,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.40.2.10011",
-                      "templateHash": "11435731876384987018"
+                      "version": "0.44.1.10279",
+                      "templateHash": "16335831597397795128"
                     }
                   },
                   "parameters": {
@@ -13708,8 +13759,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.40.2.10011",
-                              "templateHash": "17901544422906226899"
+                              "version": "0.44.1.10279",
+                              "templateHash": "14183356498899760801"
                             }
                           },
                           "parameters": {

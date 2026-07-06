@@ -1,4 +1,0 @@
----
-title: AppConfiguration
-hidden: true
----

@@ -73,7 +73,7 @@ param ANFVolumeResourceIds array = []
 param Tags object = {}
 
 var ActionGroupName = 'ag-avdmetrics-${Environment}-${Location}-${uniqueString(subscription().displayName)}'
-var AlertDescriptionHeader = 'Automated AVD Alert Deployment Solution (v2.2.2)\n' // DESCRIPTION HEADER AND VERSION <-----------------------------
+var AlertDescriptionHeader = 'Automated AVD Alert Deployment Solution (v2.3.0)\n' // DESCRIPTION HEADER AND VERSION <-----------------------------
 var AutomationAccountName = 'aa-avdmetrics-${Environment}-${Location}-${AlertNamePrefix}'
 var CloudEnvironment = environment().name
 var ResourceGroupCreate = ResourceGroupStatus == 'New' ? true : false
@@ -1120,7 +1120,8 @@ var LogAlertsHostPool = [
           | where EventID == 51
           | parse _ResourceId with "/subscriptions/" subscription "/resourcegroups/" ResourceGroup "/providers/microsoft.compute/virtualmachines/" ComputerName
           | extend ComputerName=tolower(ComputerName)
-          | project ComputerName, RenderedDescription, UserName, subscription, ResourceGroup, TimeGenerated
+          | extend ProfilePath = extract(@"<Param>([\\\\][^<]+\.VHDX?)<\/Param>", 1, ParameterXml)
+          | project ComputerName, UserName, ProfilePath, RenderedDescription, subscription, ResourceGroup, TimeGenerated
           | join kind = inner
               (
                 WVDAgentHealthStatus
@@ -1131,7 +1132,7 @@ var LogAlertsHostPool = [
                 | summarize arg_max(TimeGenerated,*) by ComputerName
                 | project VMresourceGroup, ComputerName, HostPool
               ) on ComputerName
-          | project TimeGenerated, ComputerName, HostPool, VMresourceGroup, UserName, RenderedDescription
+          | project TimeGenerated, ComputerName, HostPool, VMresourceGroup, UserName, ProfilePath, RenderedDescription
           '''
           timeAggregation: 'Count'
           dimensions: [
@@ -1151,6 +1152,13 @@ var LogAlertsHostPool = [
             }
             {
               name: 'UserName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'ProfilePath'
               operator: 'Include'
               values: [
                 '*'
@@ -1183,6 +1191,136 @@ var LogAlertsHostPool = [
     }
   }
   {
+    name: '${AlertNamePrefix}-HP-VM-AvailMemLess-2GB-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-VM-Available Memory Less Than 2GB (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}Potential performance issues for users on the same host due to moderately low memory. Log query based alert that only evaluates session hosts reporting performance data for the full evaluation window, avoiding false positives while a VM is powering on. Investigate session host memory usage per user and/or memory requirements and adjust if/as needed for xHostPoolNamex. Check user active vs. disconnected status.'
+    severity: 2
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT15M'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          Perf
+          | where TimeGenerated > ago(15m)
+          | where ObjectName == "Memory" and CounterName == "Available MBytes"
+          | parse _ResourceId with "/subscriptions/" subscription "/resourcegroups/" ResourceGroup "/providers/microsoft.compute/virtualmachines/" ComputerName
+          | extend ComputerName=tolower(ComputerName)
+          | summarize AvailableMB = round(avg(CounterValue), 0), FirstSample = min(TimeGenerated), TimeGenerated = max(TimeGenerated) by ComputerName, subscription, ResourceGroup
+          | where FirstSample <= ago(10m)
+          | where AvailableMB <= 2048
+          | join kind = inner
+              (
+                WVDAgentHealthStatus
+                | where _ResourceId contains "xHostPoolNamex"
+                | parse _ResourceId with "/subscriptions/" subscriptionAgentHealth "/resourcegroups/" ResourceGroupAgentHealth "/providers/microsoft.desktopvirtualization/hostpools/" HostPool
+                | parse SessionHostResourceId with "/subscriptions/" VMsubscription "/resourceGroups/" VMresourceGroup "/providers/Microsoft.Compute/virtualMachines/" ComputerName
+                | extend ComputerName=tolower(ComputerName)
+                | summarize arg_max(TimeGenerated,*) by ComputerName
+                | project VMresourceGroup, ComputerName, HostPool
+              ) on ComputerName
+          | project TimeGenerated, ComputerName, HostPool, VMresourceGroup, AvailableMB
+          '''
+          timeAggregation: 'Count'
+          dimensions: [
+            {
+              name: 'ComputerName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'VMresourceGroup'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'HostPool'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 1
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
+    name: '${AlertNamePrefix}-HP-VM-AvailMemLess-1GB-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-VM-Available Memory Less Than 1GB (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}Potential performance issues for users on the same host due to critically low memory. Log query based alert that only evaluates session hosts reporting performance data for the full evaluation window, avoiding false positives while a VM is powering on. Investigate session host memory usage per user and/or memory requirements and adjust if/as needed for xHostPoolNamex. Check user active vs. disconnected status.'
+    severity: 1
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT15M'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          Perf
+          | where TimeGenerated > ago(15m)
+          | where ObjectName == "Memory" and CounterName == "Available MBytes"
+          | parse _ResourceId with "/subscriptions/" subscription "/resourcegroups/" ResourceGroup "/providers/microsoft.compute/virtualmachines/" ComputerName
+          | extend ComputerName=tolower(ComputerName)
+          | summarize AvailableMB = round(avg(CounterValue), 0), FirstSample = min(TimeGenerated), TimeGenerated = max(TimeGenerated) by ComputerName, subscription, ResourceGroup
+          | where FirstSample <= ago(10m)
+          | where AvailableMB <= 1024
+          | join kind = inner
+              (
+                WVDAgentHealthStatus
+                | where _ResourceId contains "xHostPoolNamex"
+                | parse _ResourceId with "/subscriptions/" subscriptionAgentHealth "/resourcegroups/" ResourceGroupAgentHealth "/providers/microsoft.desktopvirtualization/hostpools/" HostPool
+                | parse SessionHostResourceId with "/subscriptions/" VMsubscription "/resourceGroups/" VMresourceGroup "/providers/Microsoft.Compute/virtualMachines/" ComputerName
+                | extend ComputerName=tolower(ComputerName)
+                | summarize arg_max(TimeGenerated,*) by ComputerName
+                | project VMresourceGroup, ComputerName, HostPool
+              ) on ComputerName
+          | project TimeGenerated, ComputerName, HostPool, VMresourceGroup, AvailableMB
+          '''
+          timeAggregation: 'Count'
+          dimensions: [
+            {
+              name: 'ComputerName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'VMresourceGroup'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'HostPool'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 1
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
     name: '${AlertNamePrefix}-HP-VM-HlthChkFailure-xHostPoolNamex'
     displayName: '${AlertNamePrefix}-HostPool-VM-Health Check Failure (xHostPoolNamex)'
     description: '${AlertDescriptionHeader}VM is available for use but one of the dependent resources is in a failed state for hostpool xHostPoolNamex'
@@ -1193,7 +1331,7 @@ var LogAlertsHostPool = [
     criteria: {
       allOf: [
         {
-          query: '// HealthChecks of SessionHost \n// Renders a summary of SessionHost health status. \nlet MapToDesc = (idx: long) {\n    case(idx == 0, "DomainJoin",\n    idx == 1, "DomainTrust",\n    idx == 2, "FSLogix",\n    idx == 3, "SxSStack",\n    idx == 4, "URLCheck",\n    idx == 5, "GenevaAgent",\n    idx == 6, "DomainReachable",\n    idx == 7, "WebRTCRedirector",\n    idx == 8, "SxSStackEncryption",\n    idx == 9, "IMDSReachable",\n    idx == 10, "MSIXPackageStaging",\n    "InvalidIndex")\n};\nWVDAgentHealthStatus\n| where TimeGenerated > ago(10m)\n| where Status != \'Available\'\n| where AllowNewSessions = True\n| extend CheckFailed = parse_json(SessionHostHealthCheckResult)\n| mv-expand CheckFailed\n| where CheckFailed.AdditionalFailureDetails.ErrorCode != 0\n| extend HealthCheckName = tolong(CheckFailed.HealthCheckName)\n| extend HealthCheckResult = tolong(CheckFailed.HealthCheckResult)\n| extend HealthCheckDesc = MapToDesc(HealthCheckName)\n| where HealthCheckDesc != \'InvalidIndex\'\n| where _ResourceId contains "xHostPoolNamex"\n| parse _ResourceId with "/subscriptions/" subscription "/resourcegroups/" HostPoolResourceGroup "/providers/microsoft.desktopvirtualization/hostpools/" HostPool\n| parse SessionHostResourceId with "/subscriptions/" HostSubscription "/resourceGroups/" SessionHostRG "/providers/Microsoft.Compute/virtualMachines/" SessionHostName\n'
+          query: '// HealthChecks of SessionHost \n// Renders a summary of SessionHost health status. \nlet MapToDesc = (idx: long) {\n    case(idx == 0, "DomainJoin",\n    idx == 1, "DomainTrust",\n    idx == 2, "FSLogix",\n    idx == 3, "SxSStack",\n    idx == 4, "URLCheck",\n    idx == 5, "GenevaAgent",\n    idx == 6, "DomainReachable",\n    idx == 7, "WebRTCRedirector",\n    idx == 8, "SxSStackEncryption",\n    idx == 9, "IMDSReachable",\n    idx == 10, "MSIXPackageStaging",\n    idx == 11, "TURNRelayAccessHealthCheck",\n    idx == 19, "AADJoinedHealthCheck",\n    "InvalidIndex")\n};\nWVDAgentHealthStatus\n| where TimeGenerated > ago(10m)\n| where Status != \'Available\'\n| where AllowNewSessions = True\n| extend CheckFailed = parse_json(SessionHostHealthCheckResult)\n| mv-expand CheckFailed\n| where CheckFailed.AdditionalFailureDetails.ErrorCode != 0\n| extend HealthCheckName = tolong(CheckFailed.HealthCheckName)\n| extend HealthCheckResult = tolong(CheckFailed.HealthCheckResult)\n| extend HealthCheckDesc = MapToDesc(HealthCheckName)\n| where HealthCheckDesc != \'InvalidIndex\'\n| where _ResourceId contains "xHostPoolNamex"\n| parse _ResourceId with "/subscriptions/" subscription "/resourcegroups/" HostPoolResourceGroup "/providers/microsoft.desktopvirtualization/hostpools/" HostPool\n| parse SessionHostResourceId with "/subscriptions/" HostSubscription "/resourceGroups/" SessionHostRG "/providers/Microsoft.Compute/virtualMachines/" SessionHostName\n'
           timeAggregation: 'Count'
           dimensions: [
             {
@@ -1753,10 +1891,10 @@ var MetricAlerts = {
     {
       name: '${AlertNamePrefix}-HP-VM-HighCPU-85-Prcnt-xHostPoolNamex'
       displayName: '${AlertNamePrefix}-HostPool-VM-High CPU 85 Percent (xHostPoolNamex)'
-      description: '${AlertDescriptionHeader}Potential performance issues for users on the same host due to moderately limited CPU (Avarage over 5 mins.) Investigate session host CPU usage per user and/or CPU requirements and adjust if/as needed for xHostPoolNamex.  Check user active vs. disconnected status.'
+      description: '${AlertDescriptionHeader}Potential performance issues for users on the same host due to moderately limited CPU (Average over 1 hour.) Investigate session host CPU usage per user and/or CPU requirements and adjust if/as needed for xHostPoolNamex.  Check user active vs. disconnected status.'
       severity: 2
-      evaluationFrequency: 'PT5M'
-      windowSize: 'PT15M'
+      evaluationFrequency: 'PT30M'
+      windowSize: 'PT1H'
       criteria: {
         allOf: [
           {
@@ -1788,52 +1926,6 @@ var MetricAlerts = {
             metricNamespace: 'microsoft.compute/virtualmachines'
             metricName: 'Percentage CPU'
             operator: 'GreaterThan'
-            timeAggregation: 'Average'
-            criterionType: 'StaticThresholdCriterion'
-          }
-        ]
-        'odata.type': 'Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria'
-      }
-      targetResourceType: 'microsoft.compute/virtualmachines'
-    }
-    {
-      name: '${AlertNamePrefix}-HP-VM-AvailMemLess-2GB-xHostPoolNamex'
-      displayName: '${AlertNamePrefix}-HostPool-VM-Available Memory Less Than 2GB (xHostPoolNamex)'
-      description: '${AlertDescriptionHeader}Potential performance issues for users on the same host due to moderately low memory. Investigate session host memory usage per user and/or memory requirements and adjust if/as needed for xHostPoolNamex.  Check user active vs. disconnected status.'
-      severity: 2
-      evaluationFrequency: 'PT5M'
-      windowSize: 'PT15M'
-      criteria: {
-        allOf: [
-          {
-            threshold: 2147483648
-            name: 'Metric1'
-            metricNamespace: 'microsoft.compute/virtualmachines'
-            metricName: 'Available Memory Bytes'
-            operator: 'LessThanOrEqual'
-            timeAggregation: 'Average'
-            criterionType: 'StaticThresholdCriterion'
-          }
-        ]
-        'odata.type': 'Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria'
-      }
-      targetResourceType: 'microsoft.compute/virtualmachines'
-    }
-    {
-      name: '${AlertNamePrefix}-HP-VM-AvailMemLess-1GB-xHostPoolNamex'
-      displayName: '${AlertNamePrefix}-HostPool-VM-Available Memory Less Than 1GB (xHostPoolNamex)'
-      description: '${AlertDescriptionHeader}Potential performance issues for users on the same host due to critically low memory. Investigate session host memory usage per user and/or memory requirements and adjust if/as needed for xHostPoolNamex.  Check user active vs. disconnected status.'
-      severity: 1
-      evaluationFrequency: 'PT5M'
-      windowSize: 'PT15M'
-      criteria: {
-        allOf: [
-          {
-            threshold: 1073741824
-            name: 'Metric1'
-            metricNamespace: 'microsoft.compute/virtualmachines'
-            metricName: 'Available Memory Bytes'
-            operator: 'LessThanOrEqual'
             timeAggregation: 'Average'
             criterionType: 'StaticThresholdCriterion'
           }
