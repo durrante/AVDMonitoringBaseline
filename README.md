@@ -2,13 +2,15 @@
 
 A maintained fork of the Azure Virtual Desktop (AVD) pattern from Microsoft's [Azure Monitor Baseline Alerts (AMBA)](https://github.com/Azure/azure-monitor-baseline-alerts) project.
 
-**Current Version: v2.3.0** (6 July 2026). See [What's New](docs/Whats-New.md) and the full [change log](patterns/avd/CHANGES.md).
+<a href="../../releases"><img src="https://img.shields.io/github/v/release/durrante/AVDMonitoringBaseline?style=for-the-badge&label=Current%20Version&color=4A2B8F" alt="Latest release"></a>&nbsp;<a href="../../releases"><img src="https://img.shields.io/github/release-date/durrante/AVDMonitoringBaseline?style=for-the-badge&label=Released&color=0693E3" alt="Release date"></a>&nbsp;<a href="LICENSE"><img src="https://img.shields.io/github/license/durrante/AVDMonitoringBaseline?style=for-the-badge&color=2EA44F" alt="MIT licence"></a>
 
-## Credit
+See [What's New](docs/Whats-New.md) and the full [change log](patterns/avd/CHANGES.md).
+
+## 🙏 Credit
 
 This solution is around 95% the work of the original AMBA AVD pattern authors: the Microsoft AMBA team, the AVD product group and community contributors. A particular shout-out to [@JCoreMS](https://github.com/JCoreMS), who built and maintained the AVD pattern for a long time, and [@fbloemhof](https://github.com/fbloemhof), whose unmerged upstream fixes are incorporated here. The design, alert coverage, deployment experience and documentation are theirs.
 
-## Why this fork exists
+## 💡 Why this fork exists
 
 The upstream AVD pattern appears to be abandoned. Deployment-blocking bugs such as [issue #812](https://github.com/Azure/azure-monitor-baseline-alerts/issues/812) (which stopped any portal deployment from validating) and community fixes such as [PR #839](https://github.com/Azure/azure-monitor-baseline-alerts/pull/839) sat unaddressed for months. Rather than let a good solution go to waste, I've taken over maintenance here, merged the outstanding fixes and made a small number of improvements around false positives, alert context and noise. Input, issues and PRs are all welcome.
 
@@ -24,17 +26,17 @@ What's changed from the original baseline (details and rationale in [CHANGES.md]
 | High CPU 85% alert: every 30 min over a 1-hour window (was 5 min / 15 min) | Reduces noise from short CPU spikes. The 95% Sev1 alert keeps the fast 5-minute cadence |
 | New optional `CustomerName` parameter | Identifies the customer/tenant in every alert description, useful for MSPs |
 
-## Overview
+## 📖 Overview
 
 This solution provides a baseline of alerts for AVD that are disabled by default, so administrators get meaningful and timely alerts when there are problems with an AVD deployment. It has been tested in Azure Global and Azure US Government and includes storage alerts for Azure Files and/or Azure NetApp Files. Enable alerts in phases and tune thresholds to suit your environment.
 
-## Deploy
+## 🚀 Deploy
 
 <a href="https://portal.azure.com/#blade/Microsoft_Azure_CreateUIDef/CustomDeploymentBlade/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fdurrante%2FAVDMonitoringBaseline%2Fmain%2Fpatterns%2Favd%2FavdArm.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2Fdurrante%2FAVDMonitoringBaseline%2Fmain%2Fpatterns%2Favd%2FavdCustomUi.json" target="_blank" rel="noopener"><img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure"></a>&nbsp;&nbsp;<a href="https://portal.azure.us/#blade/Microsoft_Azure_CreateUIDef/CustomDeploymentBlade/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fdurrante%2FAVDMonitoringBaseline%2Fmain%2Fpatterns%2Favd%2FavdArm.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2Fdurrante%2FAVDMonitoringBaseline%2Fmain%2Fpatterns%2Favd%2FavdCustomUi.json" target="_blank" rel="noopener"><img src="https://aka.ms/deploytoazuregovbutton" alt="Deploy to Azure Gov"></a>
 
 See the [Deployment Guide](docs/Avd-Deploy.md) for prerequisites, screenshots and post-deployment steps, including enabling the alerts (they deploy disabled by design).
 
-## Prerequisites and required data
+## ✅ Prerequisites and required data
 
 An AVD deployment with AVD Insights configured per the AVD portal's Insights configuration workbook:
 
@@ -51,7 +53,7 @@ An AVD deployment with AVD Insights configured per the AVD portal's Insights con
 
 > **Note on the memory alerts:** the Available Memory alerts are now scheduled query rules against the `Perf` table instead of platform metric alerts. If you deployed the default AVD Insights DCR, no extra configuration is needed, as `\Memory\Available Mbytes` is part of its standard counter set. The change was made because the platform metric emits a 0 sample as a session host powers on (common with autoscale), which fired false "memory critically low" alerts. The KQL version skips hosts that haven't been reporting performance data for the full evaluation window, so hosts are only evaluated once they're properly up.
 
-## For MSPs: identifying which customer or tenant an alert came from
+## 🏢 For MSPs: identifying which customer or tenant an alert came from
 
 Alert emails all arrive from Microsoft's `azure-noreply` sender, and host pool names are often identical across tenants. Two parameters make the origin obvious:
 
@@ -60,7 +62,7 @@ Alert emails all arrive from Microsoft's `azure-noreply` sender, and host pool n
 
 Both are fields in the portal deployment UI. Every log-based alert also carries `HostPool`, `ComputerName` and `VMresourceGroup` dimensions, and the alert payload includes the subscription, so routing rules in your PSA/ITSM tooling can key off those as well.
 
-## Alerts Table
+## 📊 Alerts Table
 
 The number of alert rules created may be multiple based on severity and/or additional volume or storage name designators. Download as [CSV](docs/alerts-table.csv).
 
@@ -100,7 +102,7 @@ The number of alert rules created may be multiple based on severity and/or addit
 2. See ['How to create an alert if a file share is throttled'](https://docs.microsoft.com/azure/storage/files/storage-troubleshooting-files-performance#how-to-create-an-alert-if-a-file-share-is-throttled). Both Standard and Premium values are incorporated into the alert rule. Service Health alert severity cannot be changed from 'Verbose'.
 3. Modified from the original baseline in this fork, see [CHANGES.md](patterns/avd/CHANGES.md)
 
-## Documentation
+## 📚 Documentation
 
 - [Deployment Guide](docs/Avd-Deploy.md)
 - [What's New](docs/Whats-New.md)
@@ -110,7 +112,7 @@ The number of alert rules created may be multiple based on severity and/or addit
 - [FAQ](docs/FAQ.md)
 - [Telemetry / opt-out](docs/Telemetry.md)
 
-## Repo structure
+## 🗂️ Repo structure
 
 ```text
 patterns/avd/
@@ -128,10 +130,10 @@ To rebuild the ARM template after editing the Bicep:
 bicep build patterns/avd/templates/deploy.bicep --outfile patterns/avd/avdArm.json
 ```
 
-## Contributing
+## 🤝 Contributing
 
 Issues and pull requests are welcome. If upstream AMBA resumes AVD maintenance, the intent is to contribute fixes back.
 
-## License and attribution
+## 📄 License and attribution
 
 Licensed under the [MIT License](LICENSE). Original work © Microsoft Corporation, from [Azure/azure-monitor-baseline-alerts](https://github.com/Azure/azure-monitor-baseline-alerts). This fork retains the original license and attribution. This project is not affiliated with or endorsed by Microsoft.
