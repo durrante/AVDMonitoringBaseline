@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "16067341666239359131"
+      "templateHash": "1928306181113984847"
     }
   },
   "parameters": {
@@ -1713,7 +1713,7 @@
     "LogAlertsSvcHealth": [
       {
         "name": "[format('{0}-ServiceHealth-ServiceIssue', parameters('AlertNamePrefix'))]",
-        "displayName": "[format('{0}-ServiceHealth-Serivice Issue', parameters('AlertNamePrefix'))]",
+        "displayName": "[format('{0}-ServiceHealth-Service Issue', parameters('AlertNamePrefix'))]",
         "description": "[variables('AlertDescriptionHeader')]",
         "anyof": [
           {

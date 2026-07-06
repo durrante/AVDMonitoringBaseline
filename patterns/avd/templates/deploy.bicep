@@ -2007,7 +2007,7 @@ var MetricAlerts = {
 var LogAlertsSvcHealth = [
   {
     name: '${AlertNamePrefix}-ServiceHealth-ServiceIssue'
-    displayName: '${AlertNamePrefix}-ServiceHealth-Serivice Issue'
+    displayName: '${AlertNamePrefix}-ServiceHealth-Service Issue'
     description: AlertDescriptionHeader
     anyof: [
       {
