@@ -2,7 +2,51 @@
 
 This fork of [Azure/azure-monitor-baseline-alerts](https://github.com/Azure/azure-monitor-baseline-alerts) (`patterns/avd`) is maintained independently because upstream development of the AVD pattern has gone stale. This document lists every functional change from the upstream baseline (upstream `main` as of commit `ba0266b3`, template v2.2.1) so users migrating from the original solution can see exactly what differs.
 
-**Current version: v2.3.0** (2026-07-06)
+**Current version: v2.4.0** (2026-07-06)
+
+---
+
+## v2.4.0 (2026-07-06) — this fork
+
+### 1. Host Pool Capacity alerts (50/85/95 Percent) never fired — `toint()` on a decimal value returned `null`
+
+**Alerts affected:** `AVD-HostPool-Capacity 50 Percent`, `AVD-HostPool-Capacity 85 Percent`, `AVD-HostPool-Capacity 95 Percent`
+
+The capacity runbook (`Get-HostPoolInfo.ps1`) reports `$HPLoadPercent` as a decimal (for example `68.5` or `68.25`). The alert query parsed it with:
+
+```kusto
+| extend HostPoolPercentLoad=toint(split(ResultDescription, '|')[9])
+```
+
+`toint()` only parses whole-number strings; on a decimal string like `"68.5"` it silently returns `null`. Every subsequent `where HostPoolPercentLoad >= N` comparison against `null` evaluates to false, so **these alerts have never fired**, regardless of actual host pool load. Fixed by switching to `toreal()`, which correctly parses the decimal.
+
+### 2. Host Pool Capacity alerts pointed `HPResourceId` at the wrong field
+
+Same three alerts also read:
+
+```kusto
+| extend HPResourceId=tostring(split(ResultDescription, '|')[13])
+```
+
+Counting the pipe-delimited runbook output (`HostPoolName|ResourceGroup|Type|MaxSessionLimit|NumberHosts|TotalUsers|Disconnected|Active|Available|LoadPercent|NumPerUnhlthy|PerHostUnhlthy|ResourceId`), the resource ID is at index **12**, not 13 — index 13 doesn't exist, so `HPResourceId` (used as `resourceIdColumn`) was always empty. Fixed to read index `[12]`, so fired alerts now correctly link to the host pool resource.
+
+### 3. Relevant computed values now surfaced as alert dimensions
+
+Several log-query alerts computed a meaningful current value in KQL (available memory, disk free percent, storage percent remaining) but never exposed it — for Log Alerts V2, only columns listed in `dimensions` appear in the fired alert / email / portal details, so these values were silently discarded. Added as dimensions:
+
+- **Available Memory alerts** (2GB/1GB): `AvailableMB` — the actual available memory (MB) that triggered the alert.
+- **Local Disk Free Space alerts** (10%/5%): `CounterValue` — the actual free-space percentage on the VM's local disk.
+- **Low Space on Azure File Share alerts** (15%/5%): `PercentAvailable` — the actual percentage remaining on the share.
+
+The Host Pool Capacity alerts already exposed `HostPoolPercentLoad` as a dimension, so fixing bug #1 above also fixes the percentage shown for those.
+
+### 4. Service Health alert display name typo
+
+`AVD-ServiceHealth-Serivice Issue` corrected to `AVD-ServiceHealth-Service Issue`.
+
+### 5. Version bump
+
+`AlertDescriptionHeader` and docs updated from v2.3.0 to v2.4.0.
 
 ---
 

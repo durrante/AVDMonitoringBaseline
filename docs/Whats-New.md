@@ -4,6 +4,14 @@ For information on what's new please refer to the [Releases](https://github.com/
 
 To update your current deployment with the content from the latest release, please refer to the [Update to new release](Update-to-new-Release.md) page.
 
+## 2026-07-06 — v2.4.0 (this fork)
+
+- **Host Pool Capacity alerts (50/85/95 Percent) fixed — they never fired.** The KQL parsed the load percentage with `toint()`, but the runbook reports a decimal (e.g. `68.5`); `toint()` on a decimal string returns `null`, so every threshold comparison silently failed. Switched to `toreal()`.
+- **Host Pool Capacity alerts' resource link fixed.** `HPResourceId` was reading the wrong field index in the pipe-delimited runbook output, leaving alerts with no linked resource. Corrected the index.
+- **More alerts now show the value that triggered them.** Available Memory alerts now include `AvailableMB`, Local Disk Free Space alerts now include `CounterValue` (percent free), and Low Space on Azure File Share alerts now include `PercentAvailable` — all previously computed but not surfaced in the fired alert.
+- **Typo fix**: `AVD-ServiceHealth-Serivice Issue` corrected to `AVD-ServiceHealth-Service Issue`.
+- Full details in the [change log](../patterns/avd/CHANGES.md).
+
 ## 2026-07-06 — v2.3.0 (this fork)
 
 - **Available Memory alerts** converted from metric alerts to log query (KQL) alerts to stop false positives while session hosts power on (upstream [issue #656](https://github.com/Azure/azure-monitor-baseline-alerts/issues/656)).

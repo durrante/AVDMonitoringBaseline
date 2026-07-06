@@ -25,6 +25,8 @@ What's changed from the original baseline (details and rationale in [CHANGES.md]
 | FSLogix "Profile Disk Attached to another VM" includes `UserName` and `ProfilePath` | Fired alerts now identify whose profile disk is locked and which VHD(X), without digging through event logs |
 | High CPU 85% alert: every 30 min over a 1-hour window (was 5 min / 15 min) | Reduces noise from short CPU spikes. The 95% Sev1 alert keeps the fast 5-minute cadence |
 | New optional `CustomerName` parameter | Identifies the customer/tenant in every alert description, useful for MSPs |
+| Host Pool Capacity alerts (50/85/95%) fixed | `toint()` on the runbook's decimal load percentage silently returned `null`, so these alerts never fired regardless of actual load |
+| Available Memory, Local Disk Free Space and Azure File Share alerts now show the value that triggered them | The current MB/percent value was computed in the query but not surfaced in the fired alert |
 
 ## 📖 Overview
 

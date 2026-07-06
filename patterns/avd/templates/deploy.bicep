@@ -76,7 +76,7 @@ param ANFVolumeResourceIds array = []
 param Tags object = {}
 
 var ActionGroupName = 'ag-avdmetrics-${Environment}-${Location}-${uniqueString(subscription().displayName)}'
-var AlertDescriptionHeader = empty(CustomerName) ? 'Automated AVD Alert Deployment Solution (v2.3.0)\n' : 'Customer: ${CustomerName}\nAutomated AVD Alert Deployment Solution (v2.3.0)\n' // DESCRIPTION HEADER AND VERSION <-----------------------------
+var AlertDescriptionHeader = empty(CustomerName) ? 'Automated AVD Alert Deployment Solution (v2.4.0)\n' : 'Customer: ${CustomerName}\nAutomated AVD Alert Deployment Solution (v2.4.0)\n' // DESCRIPTION HEADER AND VERSION <-----------------------------
 var AutomationAccountName = 'aa-avdmetrics-${Environment}-${Location}-${AlertNamePrefix}'
 var CloudEnvironment = environment().name
 var ResourceGroupCreate = ResourceGroupStatus == 'New' ? true : false
@@ -139,8 +139,8 @@ var LogAlertsHostPool = [
           | extend UserSessionsDisconnected=toint(split(ResultDescription, '|')[6])
           | extend UserSessionsActive=toint(split(ResultDescription, '|')[7])
           | extend UserSessionsAvailable=toint(split(ResultDescription, '|')[8])
-          | extend HostPoolPercentLoad=toint(split(ResultDescription, '|')[9])
-          | extend HPResourceId=tostring(split(ResultDescription, '|')[13])
+          | extend HostPoolPercentLoad=toreal(split(ResultDescription, '|')[9])
+          | extend HPResourceId=tostring(split(ResultDescription, '|')[12])
           | extend ResourceId=tostring(HPResourceId)
           | where HostPoolPercentLoad >= 85 and HostPoolPercentLoad < 95
           | where HostPoolName =~ 'xHostPoolNamex'
@@ -227,8 +227,8 @@ var LogAlertsHostPool = [
           | extend UserSessionsDisconnected=toint(split(ResultDescription, '|')[6])
           | extend UserSessionsActive=toint(split(ResultDescription, '|')[7])
           | extend UserSessionsAvailable=toint(split(ResultDescription, '|')[8])
-          | extend HostPoolPercentLoad=toint(split(ResultDescription, '|')[9])
-          | extend HPResourceId=tostring(split(ResultDescription, '|')[13])
+          | extend HostPoolPercentLoad=toreal(split(ResultDescription, '|')[9])
+          | extend HPResourceId=tostring(split(ResultDescription, '|')[12])
           | extend ResourceId=tostring(HPResourceId)
           | where HostPoolPercentLoad >= 50 and HostPoolPercentLoad < 85
           | where HostPoolName =~ 'xHostPoolNamex'
@@ -315,8 +315,8 @@ var LogAlertsHostPool = [
           | extend UserSessionsDisconnected=toint(split(ResultDescription, '|')[6])
           | extend UserSessionsActive=toint(split(ResultDescription, '|')[7])
           | extend UserSessionsAvailable=toint(split(ResultDescription, '|')[8])
-          | extend HostPoolPercentLoad=toint(split(ResultDescription, '|')[9])
-          | extend HPResourceId=tostring(split(ResultDescription, '|')[13])
+          | extend HostPoolPercentLoad=toreal(split(ResultDescription, '|')[9])
+          | extend HPResourceId=tostring(split(ResultDescription, '|')[12])
           | extend ResourceId=tostring(HPResourceId)
           | where HostPoolPercentLoad >= 95
           | where HostPoolName =~ 'xHostPoolNamex'
@@ -551,6 +551,13 @@ var LogAlertsHostPool = [
                 '*'
               ]
             }
+            {
+              name: 'CounterValue'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
           ]
           resourceIdColumn: '_ResourceId'
           operator: 'GreaterThanOrEqual'
@@ -615,6 +622,13 @@ var LogAlertsHostPool = [
             }
             {
               name: 'HostPool'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'CounterValue'
               operator: 'Include'
               values: [
                 '*'
@@ -1247,6 +1261,13 @@ var LogAlertsHostPool = [
                 '*'
               ]
             }
+            {
+              name: 'AvailableMB'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
           ]
           operator: 'GreaterThanOrEqual'
           threshold: 1
@@ -1307,6 +1328,13 @@ var LogAlertsHostPool = [
             }
             {
               name: 'HostPool'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'AvailableMB'
               operator: 'Include'
               values: [
                 '*'
@@ -1611,6 +1639,13 @@ var LogAlertsStorage = [
                 '*'
               ]
             }
+            {
+              name: 'PercentAvailable'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
           ]
           resourceIdColumn: 'ResourceId'
           operator: 'GreaterThanOrEqual'
@@ -1664,6 +1699,13 @@ var LogAlertsStorage = [
             }
             {
               name: 'Share'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'PercentAvailable'
               operator: 'Include'
               values: [
                 '*'
