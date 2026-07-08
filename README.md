@@ -4,7 +4,7 @@ A maintained fork of the Azure Virtual Desktop (AVD) pattern from Microsoft's [A
 
 <a href="../../releases"><img src="https://img.shields.io/github/v/release/durrante/AVDMonitoringBaseline?style=for-the-badge&label=Current%20Version&color=4A2B8F" alt="Latest release"></a>&nbsp;<a href="../../releases"><img src="https://img.shields.io/github/release-date/durrante/AVDMonitoringBaseline?style=for-the-badge&label=Released&color=0693E3" alt="Release date"></a>&nbsp;<a href="LICENSE"><img src="https://img.shields.io/github/license/durrante/AVDMonitoringBaseline?style=for-the-badge&color=2EA44F" alt="MIT licence"></a>
 
-See [What's New](docs/Whats-New.md) and the full [change log](patterns/avd/CHANGES.md).
+See [What's New](docs/Whats-New.md) and the full [change log](patterns/avd/CHANGES.md), or read the [blog post](https://modernworksplacehub.com/avd-monitoring-baseline-community-edition) for the story behind this fork.
 
 ## 🙏 Credit
 
@@ -106,6 +106,7 @@ The number of alert rules created may be multiple based on severity and/or addit
 
 ## 📚 Documentation
 
+- [Blog post: AVD Monitoring Baseline, Community Edition](https://modernworksplacehub.com/avd-monitoring-baseline-community-edition)
 - [Deployment Guide](docs/Avd-Deploy.md)
 - [What's New](docs/Whats-New.md)
 - [Change log vs the original baseline](patterns/avd/CHANGES.md)
