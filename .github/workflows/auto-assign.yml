@@ -1,0 +1,14 @@
+name: Auto-assign issues
+on:
+  issues:
+    types: [opened]
+jobs:
+  auto-assign:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Auto-assign issue
+        uses: pozil/auto-assign-issue@v4
+        with:
+          assignees: durrante

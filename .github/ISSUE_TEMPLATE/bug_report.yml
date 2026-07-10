@@ -1,0 +1,68 @@
+name: 🐛 Bug Report
+description: Something is not working as expected
+title: "[Bug]: "
+labels: ["bug"]
+type: "Bug"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in as much detail as you can, it makes fixing things far quicker.
+
+        📋 **Before you start:** please search the existing issues to check this has not already been logged.
+  - type: checkboxes
+    id: no-duplicate
+    attributes:
+      label: Duplicate check
+      options:
+        - label: I have searched the existing issues and this has not already been reported
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Which version are you running?
+      placeholder: e.g. 1.4.2
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the problem. Include any error messages in full.
+      placeholder: Tell us what you saw...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we make it happen again?
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What did you expect to happen instead?
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, browser, or anything else relevant.
+      placeholder: e.g. Windows 11, PowerShell 7.4
+    validations:
+      required: false
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or logs
+      description: 📎 Paste any screenshots or log output here. You can drag images straight into this box.
+    validations:
+      required: false
