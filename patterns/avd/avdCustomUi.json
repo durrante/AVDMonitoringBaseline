@@ -24,16 +24,32 @@
               "type": "Microsoft.Common.InfoBox",
               "visible": true,
               "options": {
-                "text": "This page is for the Subscription and region to deploy the Alerts Solution in. The next page will prompt for alternate subscriptions for Log Analytics if it is NOT within this subscription. You will need to ensure you are deploying with an Account that has full Owner over the Resource Group with this resource to allow the proper role assignments for the Automation Account!",
+                "text": "This page is for the Subscription and region to deploy the Alerts Solution in. On the next page, AVD host pools and resource groups are listed across ALL subscriptions you can read, and Log Analytics, storage and Action Groups have their own subscription selectors. Deploy with an account that can create role assignments (Owner or User Access Administrator) in every subscription containing selected host pools or VM resource groups, plus the Log Analytics and storage resource groups.",
                 "style": "Warning"
               }
             },
             {
-              "name": "HostPoolsApi",
+              "name": "HostPoolsArgApi",
               "type": "Microsoft.Solutions.ArmApiControl",
               "request": {
-                "method": "GET",
-                "path": "[concat(steps('basics').resourceScope.subscription.id, '/providers/Microsoft.DesktopVirtualization/hostpools?api-version=2021-07-12')]"
+                "method": "POST",
+                "path": "/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01",
+                "body": {
+                  "query": "resources | where type == 'microsoft.desktopvirtualization/hostpools' | project id, name, subscriptionId, resourceGroup | order by name asc",
+                  "options": { "top": 1000 }
+                }
+              }
+            },
+            {
+              "name": "ResGroupsArgApi",
+              "type": "Microsoft.Solutions.ArmApiControl",
+              "request": {
+                "method": "POST",
+                "path": "/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01",
+                "body": {
+                  "query": "resourcecontainers | where type == 'microsoft.resources/subscriptions/resourcegroups' | project id, name, subscriptionId | order by name asc",
+                  "options": { "top": 1000 }
+                }
               }
             },
             {
@@ -88,7 +104,7 @@
                   "type": "Microsoft.Common.TextBox",
                   "label": "Automation Account Scripts Location",
                   "subLabel": "",
-                  "toolTip": "Blob Storage Location/ URL container with Get-HostPoolInfo.ps1 and Get-StorAcctInfov2.ps1 needed for deployment and automation account setup.",
+                  "toolTip": "Blob Storage Location/ URL container (with trailing slash) holding Get-HostPoolInfo.ps1 and Get-StorAcctInfo.ps1, needed for deployment and automation account setup.",
                   "constraints": {
                     "required": false,
                     "regex": "",
@@ -119,7 +135,7 @@
                   "type": "Microsoft.Common.InfoBox",
                   "visible": true,
                   "options": {
-                    "text": "Be sure that the scripts Get-HostPoolInfo.ps1 and Get-StorAcctInfov2.ps1 are copied to the Selected Storage Location. IF using a Sas Token be sure to include the ?sp= prefix!",
+                    "text": "Be sure that the scripts Get-HostPoolInfo.ps1 and Get-StorAcctInfo.ps1 are copied to the Selected Storage Location (exact filenames, the template appends them to the URL). IF using a Sas Token be sure to include the ?sp= prefix!",
                     "style": "Info"
                   }
                 }
@@ -205,6 +221,67 @@
               "visible": true
             },
             {
+              "name": "UseExistingActionGroup",
+              "type": "Microsoft.Common.CheckBox",
+              "label": "Use an existing Action Group?",
+              "toolTip": "Tick to point all alert rules at an existing Action Group (email, SMS, push notifications, ITSM etc.) instead of creating a new email-based one.",
+              "constraints": {
+                "required": false
+              },
+              "visible": true
+            },
+            {
+              "name": "ActionGroupSection",
+              "type": "Microsoft.Common.Section",
+              "label": "Existing Action Group",
+              "elements": [
+                {
+                  "type": "Microsoft.Common.SubscriptionSelector",
+                  "name": "AGsubscription",
+                  "label": "Action Group Subscription",
+                  "resourceProviders": [
+                    "Microsoft.Insights"
+                  ]
+                },
+                {
+                  "name": "ActionGroupsApi",
+                  "type": "Microsoft.Solutions.ArmApiControl",
+                  "request": {
+                    "method": "GET",
+                    "path": "[concat('/subscriptions/', steps('AlertsConfig').ActionGroupSection.AGsubscription.subscriptionId, '/providers/microsoft.insights/actionGroups?api-version=2022-06-01')]",
+                    "transforms": {
+                      "list": "value[?location=='Global' || location=='global'].{label:name, value:id, description:location}"
+                    }
+                  }
+                },
+                {
+                  "name": "ExistingActionGroup",
+                  "type": "Microsoft.Common.DropDown",
+                  "label": "Existing Action Group",
+                  "toolTip": "Select the existing Action Group that all alert rules will notify. Only Action Groups with location 'Global' are listed.",
+                  "multiselect": false,
+                  "filter": true,
+                  "filterPlaceholder": "Filter Action Groups...",
+                  "defaultDescription": "A value for selection",
+                  "constraints": {
+                    "allowedValues": "[steps('AlertsConfig').ActionGroupSection.ActionGroupsApi.transformed.list]",
+                    "required": true
+                  },
+                  "visible": true
+                },
+                {
+                  "name": "infoMessageActionGroup",
+                  "type": "Microsoft.Common.InfoBox",
+                  "visible": true,
+                  "options": {
+                    "text": "Only Action Groups with location 'Global' are listed. The Service Health alert rules in this solution require a global Action Group, and deployment fails with a regional one (ServiceHealthRuleActionGroupLocationIsNotGlobal). If your Action Group is missing from the list, check its location: an Action Group's location cannot be changed after creation, so a regional one must be recreated as Global.",
+                    "style": "Warning"
+                  }
+                }
+              ],
+              "visible": "[equals(steps('AlertsConfig').UseExistingActionGroup, true)]"
+            },
+            {
               "name": "DistributionGroup",
               "type": "Microsoft.Common.TextBox",
               "label": "User Email or Distribution Group",
@@ -216,7 +293,7 @@
                 "regex": "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$",
                 "validationMessage": "Email is not valid. Please re-enter."
               },
-              "visible": true
+              "visible": "[not(equals(steps('AlertsConfig').UseExistingActionGroup, true))]"
             },
             {
               "name": "Environment",
@@ -322,6 +399,7 @@
               "name": "optionVMMetrics",
               "type": "Microsoft.Common.CheckBox",
               "label": "VMs in separate Resource Group(s)",
+              "toolTip": "Tick when session host VMs live in different resource groups from the AVD service objects: you then map each host pool to its VM resource group in the grid below, and VM metric alerts are scoped per mapping. Untick when ALL AVD resources including the VMs are in one resource group, selected as the AVD Resource Group.",
               "constraints": {
                 "required": false,
                 "validationMessage": "Selecting this will determine if multiple VM Metric based Alerts can be deployed given the scope for VM resources is per Resource Group."
@@ -334,15 +412,15 @@
               "multiselect": false,
               "defaultValue": "[]",
               "selectAll": false,
-              "toolTip": "The Resource Group where all AVD resources are deployed to include VMs.",
+              "toolTip": "The single resource group containing ALL AVD resources INCLUDING the session host VMs. The VM metric alerts (CPU, memory, OS disk) are scoped to this resource group; host pool alerts are log based and work for any selected pool regardless of this setting. Listed across all subscriptions you can read.",
               "filter": true,
               "filterPlaceholder": "Filter Resource Groups...",
               "defaultDescription": "A value for selection",
               "constraints": {
-                "allowedValues": "[map(steps('basics').ResGroupsApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.id, '\"}')))]",
+                "allowedValues": "[map(steps('basics').ResGroupsArgApi.data, (item) => parse(concat('{\"label\":\"', item.name, ' | ', item.subscriptionId, '\",\"value\":\"', item.id, '\"}')))]",
                 "required": true
               },
-              "visible": true
+              "visible": "[if(steps('AlertsConfig').optionVMMetrics, false, true)]"
             },
             {
               "name": "HostPools",
@@ -351,12 +429,12 @@
               "multiselect": true,
               "selectAll": true,
               "defaultValue": "[]",
-              "toolTip": "Select Host Pool(s) to configure Alerts for.",
+              "toolTip": "Select Host Pool(s) to configure alerts for, listed across all subscriptions you can read. Host pool alerts are log based and work wherever the pool lives; VM metric alerts are scoped separately via the AVD Resource Group above.",
               "filter": true,
               "filterPlaceholder": "Filter Host Pools...",
               "defaultDescription": "A value for selection",
               "constraints": {
-                "allowedValues": "[map(steps('basics').HostPoolsApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.id, '\"}')))]",
+                "allowedValues": "[map(steps('basics').HostPoolsArgApi.data, (item) => parse(concat('{\"label\":\"', item.name, ' | ', item.resourceGroup, '\",\"value\":\"', item.id, '\"}')))]",
                 "required": "[if(steps('AlertsConfig').optionVMMetrics, false, true)]"
               },
               "visible": "[if(steps('AlertsConfig').optionVMMetrics, false, true)]"
@@ -384,7 +462,7 @@
                       "type": "Microsoft.Common.DropDown",
                       "placeholder": "",
                       "constraints": {
-                        "allowedValues": "[map(steps('basics').HostPoolsApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.id, '\"}')))]",
+                        "allowedValues": "[map(steps('basics').HostPoolsArgApi.data, (item) => parse(concat('{\"label\":\"', item.name, ' | ', item.resourceGroup, '\",\"value\":\"', item.id, '\"}')))]",
                         "required": true
                       }
                     }
@@ -397,7 +475,7 @@
                       "type": "Microsoft.Common.DropDown",
                       "placeholder": "",
                       "constraints": {
-                        "allowedValues": "[map(steps('basics').ResGroupsApi.value, (item) => parse(concat('{\"label\":\"', item.name, '\",\"value\":\"', item.id, '\"}')))]",
+                        "allowedValues": "[map(steps('basics').ResGroupsArgApi.data, (item) => parse(concat('{\"label\":\"', item.name, ' | ', item.subscriptionId, '\",\"value\":\"', item.id, '\"}')))]",
                         "required": true
                       }
                     }
@@ -429,21 +507,14 @@
               "label": "Azure Files Storage",
               "elements": [
                 {
-                  "type": "Microsoft.Common.SubscriptionSelector",
-                  "name": "StorageSubscription",
-                  "label": "Azure Files Subscription",
-                  "resourceProviders": [
-                    "Microsoft.Storage"
-                  ]
-                },
-                {
-                  "name": "StorageApi",
+                  "name": "StorageArgApi",
                   "type": "Microsoft.Solutions.ArmApiControl",
                   "request": {
-                    "method": "GET",
-                    "path": "[concat('/subscriptions/', steps('AlertsConfig').AzFilesStorageSection.StorageSubscription.subscriptionId, '/providers/Microsoft.Storage/storageAccounts?api-version=2023-05-01')]",
-                    "transforms": {
-                      "list": "value[*].{label: name, value: id, description: join(' | ', [sku.name, location])}"
+                    "method": "POST",
+                    "path": "/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01",
+                    "body": {
+                      "query": "resources | where type == 'microsoft.storage/storageaccounts' | project id, name, subscriptionId, resourceGroup, location, skuName = tostring(sku.name) | order by name asc",
+                      "options": { "top": 1000 }
                     }
                   }
                 },
@@ -451,7 +522,7 @@
                   "name": "StorageAccountResourceIds",
                   "type": "Microsoft.Common.DropDown",
                   "label": "AVD Related Storage Accounts",
-                  "toolTip": "The Storage Accounts that are used for FSLogix or MSIX App attach.",
+                  "toolTip": "The Storage Accounts used for FSLogix or MSIX App Attach, listed across all subscriptions you can read. Use the filter box to narrow by name or subscription ID.",
                   "placeholder": "",
                   "defaultValue": "[]",
                   "multiselect": true,
@@ -461,7 +532,7 @@
                   "multiLine": true,
                   "defaultDescription": "A value for selection",
                   "constraints": {
-                    "allowedValues": "[steps('AlertsConfig').AzFilesStorageSection.StorageApi.transformed.list]",
+                    "allowedValues": "[map(steps('AlertsConfig').AzFilesStorageSection.StorageArgApi.data, (item) => parse(concat('{\"label\":\"', item.name, ' | ', item.subscriptionId, '\",\"value\":\"', item.id, '\",\"description\":\"', item.skuName, ' | ', item.location, '\"}')))]",
                     "required": true
                   },
                   "visible": true
@@ -543,8 +614,9 @@
         "CustomerName": "[steps('AlertsConfig').CustomerName]",
         "AllResourcesSameRG": "[if(steps('AlertsConfig').optionVMMetrics, false, true)]",
         "AutoResolveAlert": "[steps('AlertsConfig').AutoResolveAlert]",
-        "AVDResourceGroupId": "[steps('AlertsConfig').AVDResourceGroupId]",
-        "DistributionGroup": "[steps('AlertsConfig').DistributionGroup]",
+        "AVDResourceGroupId": "[if(steps('AlertsConfig').optionVMMetrics, '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/none', steps('AlertsConfig').AVDResourceGroupId)]",
+        "DistributionGroup": "[coalesce(steps('AlertsConfig').DistributionGroup, '')]",
+        "ExistingActionGroupResourceId": "[if(equals(steps('AlertsConfig').UseExistingActionGroup, true), steps('AlertsConfig').ActionGroupSection.ExistingActionGroup, '')]",
         "Environment": "[steps('AlertsConfig').Environment]",
         "HostPoolInfo": "[steps('AlertsConfig').hostPoolInfo]",
         "HostPools": "[steps('AlertsConfig').HostPools]",

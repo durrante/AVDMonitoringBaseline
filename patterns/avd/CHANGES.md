@@ -2,9 +2,50 @@
 
 This fork of [Azure/azure-monitor-baseline-alerts](https://github.com/Azure/azure-monitor-baseline-alerts) (`patterns/avd`) is maintained independently because upstream development of the AVD pattern has gone stale. This document lists every functional change from the upstream baseline (upstream `main` as of commit `ba0266b3`, template v2.2.1) so users migrating from the original solution can see exactly what differs.
 
-**Current version: v2.4.0** (2026-07-06)
+**Current version: v2.5.0** (2026-07-17)
 
 ---
+
+## v2.5.0 (2026-07-17) — this fork
+
+### 1. Corrected the stale networking note on the Azure File Share alerts
+
+The descriptions for `AVD-Storage-Low Space on Azure File Share-15 Percent Remaining` and `-5 Percent Remaining` warned that the runbook "will FAIL if Networking for the storage account has anything other than 'Enabled from all networks'". That note predates the script's switch to the ARM management-plane cmdlet (`Get-AzRmStorageShare`): share usage is read via ARM, which is not subject to the storage firewall or private endpoints. Verified against a production storage account with a private endpoint and public network access locked down. Both descriptions now state the accurate behaviour. (Investigated as part of [#3](https://github.com/durrante/AVDMonitoringBaseline/issues/3).)
+
+### 2. New: use an existing Action Group ([#4](https://github.com/durrante/AVDMonitoringBaseline/issues/4))
+
+All alert rules previously required a new email-based Action Group created from the `DistributionGroup` address. A new optional parameter `ExistingActionGroupResourceId` lets you point every alert rule at an Action Group you already have (email, SMS, push, ITSM connectors, etc.). When set, no new Action Group is created and `DistributionGroup` is ignored. The portal UI gains a "Use an existing Action Group?" checkbox: ticked shows a subscription selector and an Action Group picker (no resource IDs to paste), unticked behaves exactly as before. The picker lists only Action Groups with location **Global**, because the Service Health alert rules reject regional Action Groups (`ServiceHealthRuleActionGroupLocationIsNotGlobal`); a warning box in the form explains this. Fully backwards compatible: leaving the parameter empty preserves the existing behaviour.
+
+### 3. Storage runbook RBAC reduced from Storage Account Contributor to Reader
+
+The Automation Account's managed identity was granted **Storage Account Contributor** (a write-capable role) on every storage account resource group purely to read share quota and usage. The ARM read only requires **Reader**, so the assignment is now Reader. **Upgrade note:** redeploying over an existing installation does not remove the previously created Storage Account Contributor assignment; remove it manually from the storage resource group(s) after upgrading.
+
+### 4. Metric alerts now work across regions (and subscriptions)
+
+Every metric alert previously stamped `targetResourceRegion` with the **deployment** region. Deploying the solution in a different region from the monitored resources failed storage/ANF alerts outright (`The following resources were not found under the region <deployment-region>`), and worse, the multi-resource VM alerts deployed successfully but would **silently never fire** because no VMs exist in the stamped region. `targetResourceRegion` is now derived from the monitored resource itself:
+
+- Storage account and file-services alerts: the storage account's actual location
+- ANF volume alerts: the volume's actual location
+- VM alerts (multi-resource, scoped to the VM resource group): the VM resource group's location. Multi-resource metric alerts only support a single region (platform constraint), so session host VMs are assumed to be in the same region as their resource group.
+
+The alerts solution can now be deployed in any region while monitoring resources in other regions and other subscriptions.
+
+### 5. One deployment can monitor AVD environments across subscriptions
+
+The Basics-page subscription previously constrained the whole deployment: the host pool and resource group pickers only listed that subscription, the `Get-HostPoolInfo` runbook was pointed at the deployment subscription, and the Desktop Virtualization Reader role assignments were scoped by resource group name only (implicitly the deployment subscription). Now:
+
+- **Pickers:** host pools, the AVD resource group and the VM resource group grid column are listed via Azure Resource Graph across every subscription the deploying user can read. Labels include the resource group (host pools) or subscription (resource groups) for disambiguation. The alerts resource group picker deliberately still lists only the deployment subscription, since that's where the solution itself lives.
+- **Runbook:** the `SubscriptionId` parameter of `Get-HostPoolInfo.ps1` now accepts a comma-separated list (a single value remains fully supported, so existing schedules are unaffected). The template passes the distinct set of subscriptions derived from the selected host pools, and the runbook switches context per subscription.
+- **RBAC:** Desktop Virtualization Reader is granted per VM resource group and per host pool resource group (deduplicated), each in its own subscription.
+- **The VMs-in-separate-resource-groups mapping grid is preserved** and each row is now cross-subscription capable.
+
+Notes: the deploying account needs Owner or User Access Administrator in every subscription containing selected host pools or VM resource groups. In "all resources in same RG" mode the VM metric alerts still cover the single selected AVD resource group; use the mapping grid for multi-subscription or multi-resource-group estates. The runbook is fetched from `_ArtifactsLocation` at deploy time, so multi-subscription deployments require the updated `Get-HostPoolInfo.ps1` to be published (or a custom script location).
+
+Further refinements:
+
+- **Storage accounts are cross-subscription too:** the Azure Files picker is now a single Azure Resource Graph backed multi-select across every readable subscription (labels show `name | subscriptionId`, descriptions show SKU and region), replacing the one-subscription-at-a-time selector. The template already handled cross-subscription storage (per-account role assignments, context-switching runbook, region-aware metric alerts), so this was UI-only.
+- **AVD Resource Group is now hidden when "VMs in separate Resource Group(s)" is ticked** — in grid mode the mapping rows define the VM alert scopes and the field was vestigial. The always-on Desktop Virtualization Reader assignment on that resource group is now conditional on same-RG mode to match (previously it deployed even in grid mode, an inherited upstream quirk). The form passes a placeholder value in grid mode; the template ignores it there.
+- **Tooltips now explain the mode split:** the AVD Resource Group is the scope for the VM metric alerts (CPU, memory, OS disk) in same-RG mode, while host pool alerts are log based and follow the selected pools wherever they live — previously nothing in the UI explained why the host pool list ignored the resource group selection.
 
 ## v2.4.0 (2026-07-06) — this fork
 

@@ -2,7 +2,7 @@
 
 ## What are the Prerequisites?
 
-An AVD deployment and the Owner Role on the Subscription containing the AVD resources, VMs and Storage.  You must have also pre-configured the AVD Insights as it will enable diagnostic logging for the Host Pools and associated VMs in which the alerts rely on.
+An AVD deployment, and Owner (or User Access Administrator) in every subscription containing the selected host pools, VM resource groups and storage accounts, since the deployment creates role assignments there. You must have also pre-configured the AVD Insights as it will enable diagnostic logging for the Host Pools and associated VMs in which the alerts rely on. All selected host pools must send AVD Insights data to the single Log Analytics workspace chosen at deployment.
 
 ## What's deployed to my Subscription?
 
@@ -14,10 +14,10 @@ Resource Group starting with the name "rg-avdmetrics-" with the following:
 - Identity for the Automation Account in which the name will start with "aa-avdmetrics-"
 - Logic App that execute every 5 minutes (Host Pool Info Runbook)
 
-The Automation Account Identity will be assigned the following roles at the Subscription level:
+The Automation Account Identity will be assigned the following roles:
 
 - Desktop Virtualization Reader
-- Reader and Data Access (Storage Specific)
+- Reader on the storage account resource group(s) (share usage is read via the ARM management plane, so no data-plane or write-capable role is needed)
 
 ## What's the cost?
 

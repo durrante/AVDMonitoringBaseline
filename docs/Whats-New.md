@@ -4,6 +4,15 @@ For information on what's new please refer to the [Releases](https://github.com/
 
 To update your current deployment with the content from the latest release, please refer to the [Update to new release](Update-to-new-Release.md) page.
 
+## 2026-07-17 — v2.5.0 (this fork)
+
+- **Deploy once for multi-subscription, multi-region estates.** Host pools, session host VM resource groups and storage accounts can now live in different subscriptions and regions from the alerts deployment (and from each other). The portal pickers list resources across every subscription you can read, the host pool runbook collects data across subscriptions, and every metric alert automatically targets the monitored resource's own region. One deployment per Log Analytics workspace now covers the whole estate, where previously a deployment was needed per subscription and everything had to share the deployment region. Note: all selected host pools must send AVD Insights data to the single Log Analytics workspace chosen at deployment.
+- **Use an existing Action Group** ([#4](https://github.com/durrante/AVDMonitoringBaseline/issues/4)). A new checkbox lets you point every alert rule at an Action Group you already have, so SMS, push notifications and ITSM connectors are available to all alerts, and notification changes made on the Action Group apply everywhere at once. The picker lists Action Groups with location Global (a platform requirement of the Service Health alert rules). Unticked, the solution creates an email based Action Group exactly as before.
+- **Tighter RBAC for the storage runbook.** The Automation Account identity now receives Reader on the storage account resource group(s) instead of Storage Account Contributor. Share usage is read via the ARM management plane, so no write capable or data plane role is needed. On upgrades, remove the old Storage Account Contributor assignment manually.
+- **Private endpoint and firewalled storage accounts are fully supported** by the Azure Files share space alerts, and the alert descriptions now say so (the previous note claiming the runbook required "Enabled from all networks" was outdated).
+- **Portal UI refinements**: clearer mode guidance for "VMs in separate Resource Group(s)" (the AVD Resource Group field now only appears when it is actually used), storage account and host pool lists include the subscription for disambiguation, and the custom script location guidance now states the exact script filenames.
+- Full details in the [change log](../patterns/avd/CHANGES.md).
+
 ## 2026-07-06 — v2.4.0 (this fork)
 
 - **Host Pool Capacity alerts (50/85/95 Percent) fixed — they never fired.** The KQL parsed the load percentage with `toint()`, but the runbook reports a decimal (e.g. `68.5`); `toint()` on a decimal string returns `null`, so every threshold comparison silently failed. Switched to `toreal()`.

@@ -1,11 +1,17 @@
 param AutoMitigate bool
 param Enabled bool
 param Environment string
-param Location string
 param StorageAccountResourceID string
 param MetricAlertsStorageAcct array
 param ActionGroupID string
 param Tags object
+
+// Metric alerts require targetResourceRegion to match the MONITORED resource's region,
+// which may differ from the deployment region (cross-region/cross-subscription monitoring).
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
+  name: split(StorageAccountResourceID, '/')[8]
+  scope: resourceGroup(split(StorageAccountResourceID, '/')[2], split(StorageAccountResourceID, '/')[4])
+}
 
 module metricAlerts_StorageAcct '../carml/1.3.0/Microsoft.Insights/metricAlerts/deploy.bicep' = [for i in range(0, length(MetricAlertsStorageAcct)):  {
   name: length('c_${MetricAlertsStorageAcct[i].name}-${split(StorageAccountResourceID, '/')[8]}-${Environment}') > 64
@@ -25,7 +31,7 @@ module metricAlerts_StorageAcct '../carml/1.3.0/Microsoft.Insights/metricAlerts/
     autoMitigate: AutoMitigate
     tags: contains(Tags, 'Microsoft.Insights/metricAlerts') ? Tags['Microsoft.Insights/metricAlerts'] : {}
     targetResourceType: MetricAlertsStorageAcct[i].targetResourceType
-    targetResourceRegion: Location
+    targetResourceRegion: storageAccount.location
     actions: [
       {
         actionGroupId: ActionGroupID

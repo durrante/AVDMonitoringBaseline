@@ -1,6 +1,8 @@
 <#
-LAST UPDTATE: July 2023
--- Added info for Personal Host Pool Info regarding need for alert where assigned but unhealthy
+LAST UPDTATE: July 2026
+-- July 2026: SubscriptionId now accepts a comma-separated list so one Automation Account can
+   collect host pool data across multiple subscriptions (single value remains fully supported)
+-- July 2023: Added info for Personal Host Pool Info regarding need for alert where assigned but unhealthy
 #>
 
 
@@ -14,10 +16,15 @@ param(
 
 Connect-AzAccount -Identity -Environment $CloudEnvironment | Out-Null
 
-$AVDHostPools = Get-AzWvdHostPool -SubscriptionId $SubscriptionId
-
 # $HostPoolInfoObj= @()
 $Output = @()
+
+# SubscriptionId accepts a single subscription ID or a comma-separated list, so one
+# Automation Account can collect host pool data across multiple subscriptions
+Foreach($AVDSubscription in ($SubscriptionId -split ',' | Where-Object { $_ })) {
+$AVDSubscription = $AVDSubscription.Trim()
+Set-AzContext -SubscriptionId $AVDSubscription | Out-Null
+$AVDHostPools = Get-AzWvdHostPool -SubscriptionId $AVDSubscription
 
 Foreach($AVDHostPool in $AVDHostPools){
     $HPPerUnhlthy = $null
@@ -63,6 +70,7 @@ Foreach($AVDHostPool in $AVDHostPools){
 	Else {$HPLoadPercent = 0}
     $Output += $HPName + "|" + $HPResGroup + "|" + $HPType + "|" + $HPMaxSessionLimit  + "|" + $HPNumSessionHosts + "|" + $HPUsrSession  + "|" + $HPUsrDisonnected  + "|" + $HPUsrActive + "|" + $HPSessionsAvail + "|" + $HPLoadPercent + "|" + $HPNumPerUnhlthy + "|" + $HPPerHostUnhlthy  + "|" + $HP_ResID
 }
+} # end foreach subscription
 
 # $Output = ConvertTo-Json -InputObject $HostPoolInfoObj
 Write-Output $Output

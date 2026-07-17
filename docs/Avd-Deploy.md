@@ -24,7 +24,7 @@ An AVD deployment with associated Insights configuration per the AVD Portal's AV
   </a>
 
   <a href="https://portal.azure.us/#blade/Microsoft_Azure_CreateUIDef/CustomDeploymentBlade/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fdurrante%2FAVDMonitoringBaseline%2Fmain%2Fpatterns%2Favd%2FavdArm.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2Fdurrante%2FAVDMonitoringBaseline%2Fmain%2Fpatterns%2Favd%2FavdCustomUi.json" target="_blank" rel="noopener">
-  <img src="https://aka.ms/deploytoazuregovbutton" alt="Deploy to Azure Gov">
+  <img src="https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/deploytoazuregov.svg?sanitize=true" alt="Deploy to Azure Gov">
   </a>
 </div>
 

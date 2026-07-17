@@ -27,8 +27,11 @@ param AllResourcesSameRG bool = true
 @description('Determine if you would like to set all deployed alerts to auto-resolve.')
 param AutoResolveAlert bool = true
 
-@description('The Distribution Group that will receive email alerts for AVD.')
-param DistributionGroup string
+@description('The email address or distribution list that receives alert notifications when a new Action Group is created. Ignored (and may be empty) when ExistingActionGroupResourceId is supplied.')
+param DistributionGroup string = ''
+
+@description('Optional. The Resource ID of an existing Action Group to use for all alert rules. Leave empty to create a new email-based Action Group using DistributionGroup.')
+param ExistingActionGroupResourceId string = ''
 
 @allowed([
   'd'
@@ -93,9 +96,9 @@ var RoleAssignments = {
     Name: 'Desktop-Virtualization-Reader'
     GUID: '49a72310-ab8d-41df-bbb0-79b649203868'
   }
-  StoreAcctContrib: {
-    Name: 'Storage-Account-Contributor'
-    GUID: '17d1049b-9a84-46fb-8f53-869881c3d3ab'
+  StorageReader: {
+    Name: 'Reader'
+    GUID: 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
   }
   LogAnalyticsContributor: {
     Name: 'LogAnalytics-Contributor'
@@ -103,7 +106,7 @@ var RoleAssignments = {
   }
 }
 // '49a72310-ab8d-41df-bbb0-79b649203868'  // Desktop Virtualization Reader
-// '17d1049b-9a84-46fb-8f53-869881c3d3ab'  // Storage Account Contributor
+// 'acdd72a7-3385-48ef-bd42-f606fba81ae7'  // Reader (storage share usage is read via the ARM management plane)
 // '92aaf0da-9dab-42b6-94a3-d43ce8d16293'  // Log Analtyics Contributor - allows writing to workspace for Host Pool and Storage Logic Apps
 
 var cuaid = 'b8b4a533-1bb2-402f-bbd9-3055d00d885a'
@@ -1597,7 +1600,7 @@ var LogAlertsStorage = [
     // Based on Runbook script Output to LAW
     name: '${AlertNamePrefix}-StorLowSpaceAzFile-15PrcntRem-${uniqueString(subscription().displayName)}'
     displayName: '${AlertNamePrefix}-Storage-Low Space on Azure File Share-15 Percent Remaining'
-    description: '${AlertDescriptionHeader}This alert is based on the Action Account and Runbook that populates the Log Analytics specificed with the AVD Metrics Deployment Solution.\nNOTE: The Runbook will FAIL if Networking for the storage account has anything other than "Enabled from all networks"\n-->Last Number in the string is the Percentage Remaining for the Share.\nOutput: ResultsDescription\nStorageType,Subscription,ResourceGroup,StorageAccount,ShareName,Quota,GBUsed,PercentRemaining'
+    description: '${AlertDescriptionHeader}This alert is based on the Action Account and Runbook that populates the Log Analytics specificed with the AVD Metrics Deployment Solution.\nNOTE: The Runbook reads share usage via the Azure management plane, so it works regardless of the storage account network configuration (firewalls and private endpoints included)\n-->Last Number in the string is the Percentage Remaining for the Share.\nOutput: ResultsDescription\nStorageType,Subscription,ResourceGroup,StorageAccount,ShareName,Quota,GBUsed,PercentRemaining'
     severity: 2
     evaluationFrequency: 'PT10M'
     windowSize: 'PT1H'
@@ -1662,7 +1665,7 @@ var LogAlertsStorage = [
     // Based on Runbook script Output to LAW
     name: '${AlertNamePrefix}-StorLowSpaceAzFile-5PrcntRem-${uniqueString(subscription().displayName)}'
     displayName: '${AlertNamePrefix}-Storage-Low Space on Azure File Share-5 Percent Remaining'
-    description: '${AlertDescriptionHeader}This alert is based on the Action Account and Runbook that populates the Log Analytics specificed with the AVD Metrics Deployment Solution.\nNOTE: The Runbook will FAIL if Networking for the storage account has anything other than "Enabled from all networks"\n-->Last Number in the string is the Percentage Remaining for the Share.\nOutput: ResultsDescription\nStorageType,Subscription,ResourceGroup,StorageAccount,ShareName,Quota,GBUsed,PercentRemaining'
+    description: '${AlertDescriptionHeader}This alert is based on the Action Account and Runbook that populates the Log Analytics specificed with the AVD Metrics Deployment Solution.\nNOTE: The Runbook reads share usage via the Azure management plane, so it works regardless of the storage account network configuration (firewalls and private endpoints included)\n-->Last Number in the string is the Percentage Remaining for the Share.\nOutput: ResultsDescription\nStorageType,Subscription,ResourceGroup,StorageAccount,ShareName,Quota,GBUsed,PercentRemaining'
     severity: 1
     evaluationFrequency: 'PT10M'
     windowSize: 'PT1H'
@@ -2098,7 +2101,7 @@ var LogAlertsSvcHealth = [
 ]
 var varJobScheduleParamsHostPool = {
   CloudEnvironment: CloudEnvironment
-  SubscriptionId: SubscriptionId
+  SubscriptionId: join(HostPoolSubIds, ',')
 }
 // fixes issue with array not being in JSON format
 var varStorAcctResIDsString = StorageAccountResourceIds
@@ -2107,7 +2110,16 @@ var varJobScheduleParamsAzFiles = {
   StorageAccountResourceIDs: string(varStorAcctResIDsString)
 }
 
-var SubscriptionId = subscription().subscriptionId
+// AVD host pools may live in different subscriptions and resource groups from the alerts
+// deployment. Derive the distinct subscriptions and host pool resource groups from the
+// selected host pools: the mapping grid (HostPoolInfo) when VMs are in separate RGs,
+// otherwise the HostPools list. Falls back to the deployment subscription if nothing is selected.
+var HostPoolIdsSource = AllResourcesSameRG ? HostPools : map(HostPoolInfo, info => info.colHostPoolName)
+var HostPoolSubIds = empty(HostPoolIdsSource)
+  ? [subscription().subscriptionId]
+  : union(map(HostPoolIdsSource, item => split(item, '/')[2]), [])
+var HostPoolSubRGs = union(map(HostPoolIdsSource, item => '${split(item, '/')[2]},${split(item, '/')[4]}'), [])
+var AVDRGScopeEntry = toLower('${split(AVDResourceGroupId, '/')[2]},${split(AVDResourceGroupId, '/')[4]}')
 var varScheduleName = 'AVD_Chk-'
 var varTimeZone = varTimeZones[Location]
 var varTimeZones = {
@@ -2423,7 +2435,7 @@ module automationAccount 'carml/1.3.0/Microsoft.Automation/automationAccounts/de
 // (Needed for Automation Account)
 module roleAssignment_AutoAcctDesktopRead 'carml/1.3.0/Microsoft.Authorization/roleAssignments/resourceGroup/deploy.bicep' = [
   for RG in HostPoolInfo: if (!AllResourcesSameRG) {
-    scope: resourceGroup(split(RG.colVMResGroup, '/')[4])
+    scope: resourceGroup(split(RG.colVMResGroup, '/')[2], split(RG.colVMResGroup, '/')[4])
     name: 'c_DsktpRead_${split(RG.colVMResGroup, '/')[4]}'
     params: {
       enableDefaultTelemetry: false
@@ -2440,8 +2452,8 @@ module roleAssignment_AutoAcctDesktopRead 'carml/1.3.0/Microsoft.Authorization/r
 
 // Assign role to Automation Account for Desktop Virtualization Reader to account for all AVD Resources and VMs if in the same Resource Group
 // (Needed for Automation Account)
-module roleAssignment_AutoAcctDesktopReadSameRG 'carml/1.3.0/Microsoft.Authorization/roleAssignments/resourceGroup/deploy.bicep' ={
-    scope: resourceGroup(split(AVDResourceGroupId, '/')[4])
+module roleAssignment_AutoAcctDesktopReadSameRG 'carml/1.3.0/Microsoft.Authorization/roleAssignments/resourceGroup/deploy.bicep' = if (AllResourcesSameRG) {
+    scope: resourceGroup(split(AVDResourceGroupId, '/')[2], split(AVDResourceGroupId, '/')[4])
     name: 'c_DsktpRead_${split(AVDResourceGroupId, '/')[4]}'
     params: {
       enableDefaultTelemetry: false
@@ -2454,6 +2466,28 @@ module roleAssignment_AutoAcctDesktopReadSameRG 'carml/1.3.0/Microsoft.Authoriza
       automationAccount
     ]
   }
+
+// Assign Desktop Virtualization Reader on each HOST POOL's resource group (deduplicated across
+// pools, each in its own subscription), so the Get-HostPoolInfo runbook can read pools living in
+// other resource groups or subscriptions. Runs after the assignments above so any overlapping
+// scope is a safe re-apply of an identical assignment rather than a race.
+module roleAssignment_AutoAcctDesktopReadHostPoolRGs 'carml/1.3.0/Microsoft.Authorization/roleAssignments/resourceGroup/deploy.bicep' = [
+  for entry in HostPoolSubRGs: if (toLower(entry) != AVDRGScopeEntry) {
+    scope: resourceGroup(split(entry, ',')[0], split(entry, ',')[1])
+    name: 'c_DsktpReadHP_${uniqueString(entry)}'
+    params: {
+      enableDefaultTelemetry: false
+      principalId: automationAccount.outputs.systemAssignedPrincipalId
+      roleDefinitionIdOrName: 'Desktop Virtualization Reader'
+      principalType: 'ServicePrincipal'
+      resourceGroupName: split(entry, ',')[1]
+    }
+    dependsOn: [
+      roleAssignment_AutoAcctDesktopRead
+      roleAssignment_AutoAcctDesktopReadSameRG
+    ]
+  }
+]
 
 // Assign role to Automation Account for Log Analytics Contributor to allow Automation Account to write to Log Analytics
 // (Needed for Automation Account)
@@ -2472,16 +2506,16 @@ module roleAssignment_LogAnalytics 'carml/1.3.0/Microsoft.Authorization/roleAssi
   ]
 }
 
-// Assign role to Automation Account for Storage Account Contributor to allow Automation Account to gather Storage Statistics
-// (Needed for Automation Account)
+// Assign Reader to the Automation Account on the Storage Account resource group(s) so it can gather share statistics
+// (share usage is read via the ARM management plane, so Reader is sufficient - no write-capable role needed)
 module roleAssignment_Storage 'carml/1.3.0/Microsoft.Authorization/roleAssignments/resourceGroup/deploy.bicep' = [
   for StorAcctInfo in StorAcctsSubRGs: {
     scope: resourceGroup(split(StorAcctInfo, ',')[0],split(StorAcctInfo, ',')[1])
-    name: 'c_StorAcctContrib_${split(StorAcctInfo, ',')[1]}'
+    name: 'c_StorReader_${split(StorAcctInfo, ',')[1]}'
     params: {
       enableDefaultTelemetry: false
       principalId: automationAccount.outputs.systemAssignedPrincipalId
-      roleDefinitionIdOrName: '/providers/Microsoft.Authorization/roleDefinitions/${RoleAssignments.StoreAcctContrib.GUID}'
+      roleDefinitionIdOrName: '/providers/Microsoft.Authorization/roleDefinitions/${RoleAssignments.StorageReader.GUID}'
       principalType: 'ServicePrincipal'
       resourceGroupName: split(StorAcctInfo, ',')[1]
     }
@@ -2510,6 +2544,7 @@ module metricsResources 'modules/metricsResources.bicep' = {
     MetricAlerts: MetricAlerts
     StorageAccountResourceIds: StorageAccountResourceIds
     ActionGroupName: ActionGroupName
+    ExistingActionGroupResourceId: ExistingActionGroupResourceId
     ANFVolumeResourceIds: ANFVolumeResourceIds
     Tags: Tags
   }
