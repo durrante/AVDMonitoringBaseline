@@ -91,7 +91,6 @@ The number of alert rules created may be multiple based on severity and/or addit
 | AVD-HostPool-VM-Personal Assigned Not Healthy (hostpoolname)              | Any are Sev 1              | Log Analytics  |  5 min              |  1/hostpool |
 | AVD-HostPool-VM-OS Disk Bandwidth Avg n% (hostpoolname)                   | 95 (1) / 85 (2)            | Metric Alerts  |  5 min              |  2/hostpool |
 | AVD-HostPool-VM-User Connection Failed (hostpoolname)                     | Any are Sev 3              | Log Analytics  |  15 min             |  1/hostpool |
-| AVD-HostPool-VM-Missing Critical Updates (hostpoolname)                   | Any are Sev 1              | Log Analytics  |  1 day              |  1/hostpool |
 | AVD-Storage-Low Space on ANF Share-XX Percent Remaining-{volumename}      | 5 / 15                     | Metric Alerts  |  1 hour             |  2/vol  |
 | AVD-Storage-Low Space on Azure File Share-X% Remaining-{volumename} (1.)  | 5 / 15                     | Log Analytics  |  1 hour             |  2/share  |
 | AVD-Storage-Over XXms Latency for Storage Act-{storacctname}              | 100ms / 50ms               | Metric Alerts  |  15 min             |  2/stor acct |
