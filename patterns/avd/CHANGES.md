@@ -68,7 +68,11 @@ A scaling plan can live in a different resource group, or subscription, from the
 - **Portal form:** looks up scaling plans via Azure Resource Graph, passes the plans assigned to the selected host pools, and shows two messages. An info box lists each selected host pool with its scaling plan and resource group. A warning lists selected host pools with **no** scaling plan, as the scaling plan alerts do not apply to them.
 - **Docs:** a new FAQ entry explains when the scaling plan alerts stay silent, including the need to redeploy after assigning or moving a plan later, and includes a query to check what the runbook reports.
 
-### 9. Documentation corrections
+### 9. Runbook scripts now come from the same location as the template
+
+The `_ArtifactsLocation` parameter defaulted to the `main` branch on GitHub, so deploying the template from any other branch or URL (for example to test a pre-release from the `dev` branch) silently installed `main`'s runbook scripts. The default is now empty. When empty, the scripts are taken from the `scripts/` folder next to the deployed template, using the template address Azure provides for URL based deployments (Deploy to Azure button, `--template-uri`). The fallback is `main` on GitHub when no template address is available, such as a local file deployment. A custom script location still overrides both. The standard Deploy to Azure button behaves exactly as before, because its template lives on `main`.
+
+### 10. Documentation corrections
 
 - The FAQ said a Logic App ran the runbooks every 5 minutes. The solution uses four hourly Automation schedules offset by 15 minutes, so the runbooks run **every 15 minutes**, and no Logic App is deployed. Corrected.
 - The alert description header still said v2.4.0. It now says v2.6.0.

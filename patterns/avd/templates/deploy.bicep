@@ -5,8 +5,11 @@ targetScope = 'subscription'
 param SetEnabled bool = false
  */
 
-@description('Location of needed scripts to deploy solution.')
-param _ArtifactsLocation string = 'https://raw.githubusercontent.com/durrante/AVDMonitoringBaseline/main/patterns/avd/scripts/'
+@description('Optional. Location of the runbook scripts (with trailing slash). Leave empty to use the scripts folder next to the deployed template, so a deployment from the dev branch or a tagged release uses that same version of the scripts. Falls back to the main branch on GitHub when the template is deployed from a local file.')
+// Empty default (resolved in the ArtifactsLocation variable) rather than deployment().properties.templateLink.uri,
+// because templateLink does not exist when deploying from a local file and the deployment would fail
+#disable-next-line artifacts-parameters
+param _ArtifactsLocation string = ''
 
 @description('SaS token if needed for script location.')
 @secure()
@@ -88,6 +91,15 @@ var CloudEnvironment = environment().name
 var ResourceGroupCreate = ResourceGroupStatus == 'New' ? true : false
 var RunbookNameGetStorage = 'AvdStorageLogData'
 var RunbookNameGetHostPool = 'AvdHostPoolLogData'
+// When deployed from a URL (Deploy to Azure button or --template-uri), Azure exposes the template's own
+// address, so the runbook scripts come from the same branch or release as the template. Previously the
+// scripts were always fetched from main, so testing the dev branch silently installed main's runbooks
+var TemplateLinkUri = deployment().properties.?templateLink.?uri ?? ''
+var ArtifactsLocation = !empty(_ArtifactsLocation)
+  ? _ArtifactsLocation
+  : (!empty(TemplateLinkUri)
+      ? uri(TemplateLinkUri, 'scripts/')
+      : 'https://raw.githubusercontent.com/durrante/AVDMonitoringBaseline/main/patterns/avd/scripts/')
 var RunbookScriptGetStorage = 'Get-StorAcctInfo.ps1${_ArtifactsLocationSasToken}'
 var RunbookScriptGetHostPool = 'Get-HostPoolInfo.ps1${_ArtifactsLocationSasToken}'
 var StorAcctsAll = [for item in StorageAccountResourceIds: '${split(item, '/')[2]},${split(item, '/')[4]}']  //format of SubscriptionId,ResourceGroup
@@ -2750,14 +2762,14 @@ module automationAccount 'carml/1.3.0/Microsoft.Automation/automationAccounts/de
             name: RunbookNameGetHostPool
             description: 'AVD Metrics Runbook for collecting related Host Pool statistics to store in Log Analytics for specified Alert Queries'
             type: 'PowerShell'
-            uri: '${_ArtifactsLocation}${RunbookScriptGetHostPool}'
+            uri: '${ArtifactsLocation}${RunbookScriptGetHostPool}'
             version: '1.0.0.0'
           }
           {
             name: RunbookNameGetStorage
             description: 'AVD Metrics Runbook for collecting related Azure Files storage statistics to store in Log Analytics for specified Alert Queries'
             type: 'PowerShell'
-            uri: '${_ArtifactsLocation}${RunbookScriptGetStorage}'
+            uri: '${ArtifactsLocation}${RunbookScriptGetStorage}'
             version: '1.0.0.0'
           }
         ]
@@ -2766,7 +2778,7 @@ module automationAccount 'carml/1.3.0/Microsoft.Automation/automationAccounts/de
             name: RunbookNameGetHostPool
             description: 'AVD Metrics Runbook for collecting related Host Pool statistics to store in Log Analytics for specified Alert Queries'
             type: 'PowerShell'
-            uri: '${_ArtifactsLocation}${RunbookScriptGetHostPool}'
+            uri: '${ArtifactsLocation}${RunbookScriptGetHostPool}'
             version: '1.0.0.0'
           }
         ]

@@ -90,7 +90,7 @@
               "name": "optionCustomScriptLocation",
               "type": "Microsoft.Common.CheckBox",
               "label": "Using Custom Script Location",
-              "toolTip": "Selecting this will provide additional feilds for inputting a Blob Storage URL and Sas Token. Currently the deployment uses the Internet facing GitHub site. This is common when deploying in Air Gapped Clouds.",
+              "toolTip": "Selecting this will provide additional fields for inputting a Blob Storage URL and Sas Token. Without it, the runbook scripts are taken from the same GitHub location as this template (so the dev branch uses dev scripts and main uses main scripts). This is common when deploying in Air Gapped Clouds.",
               "constraints": {
                 "required": false,
                 "validationMessage": "Selecting this will provide additional feilds for inputting a Blob Storage URL and Sas Token. Currently the deployment uses the Internet facing GitHub site."
