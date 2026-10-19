@@ -32,7 +32,7 @@ param type string = ''
 @description('Optional. Enable telemetry via a Globally Unique Identifier (GUID).')
 param enableDefaultTelemetry bool = true
 
-resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (enableDefaultTelemetry) {
+resource defaultTelemetry 'Microsoft.Resources/deployments@2025-04-01' = if (enableDefaultTelemetry) {
   name: 'pid-47ed15a6-730a-4827-bcb4-0fd963ffbd82-${uniqueString(deployment().name)}'
   properties: {
     mode: 'Incremental'
@@ -44,11 +44,11 @@ resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (ena
   }
 }
 
-resource virtualNetworkGateway 'Microsoft.Network/virtualNetworkGateways@2022-07-01' existing = {
+resource virtualNetworkGateway 'Microsoft.Network/virtualNetworkGateways@2025-09-01' existing = {
   name: virtualNetworkGatewayName
 }
 
-resource natRule 'Microsoft.Network/virtualNetworkGateways/natRules@2022-07-01' = {
+resource natRule 'Microsoft.Network/virtualNetworkGateways/natRules@2025-09-01' = {
   name: name
   parent: virtualNetworkGateway
   properties: {

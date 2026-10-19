@@ -179,7 +179,7 @@ var builtInRoleNames = {
   'Workbook Reader': subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b279062a-9be3-42a0-92ae-8b3cf002ec4d')
 }
 
-resource privateLinkScope 'Microsoft.Insights/privateLinkScopes@2019-10-17-preview' existing = {
+resource privateLinkScope 'Microsoft.Insights/privateLinkScopes@2021-09-01' existing = {
   name: last(split(resourceId, '/'))!
 }
 

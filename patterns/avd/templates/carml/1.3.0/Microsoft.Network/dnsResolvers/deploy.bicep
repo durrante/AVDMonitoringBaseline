@@ -31,7 +31,7 @@ param inboundEndpoints array = []
 @description('Optional. Enable telemetry via a Globally Unique Identifier (GUID).')
 param enableDefaultTelemetry bool = true
 
-resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (enableDefaultTelemetry) {
+resource defaultTelemetry 'Microsoft.Resources/deployments@2025-04-01' = if (enableDefaultTelemetry) {
   name: 'pid-47ed15a6-730a-4827-bcb4-0fd963ffbd82-${uniqueString(deployment().name, location)}'
   properties: {
     mode: 'Incremental'
@@ -43,7 +43,7 @@ resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (ena
   }
 }
 
-resource dnsResolver 'Microsoft.Network/dnsResolvers@2022-07-01' = {
+resource dnsResolver 'Microsoft.Network/dnsResolvers@2025-05-01' = {
   name: name
   location: location
   tags: tags
@@ -54,7 +54,7 @@ resource dnsResolver 'Microsoft.Network/dnsResolvers@2022-07-01' = {
   }
 }
 
-resource dnsResolver_inboundEndpoint 'Microsoft.Network/dnsResolvers/inboundEndpoints@2022-07-01' = [for inboundEndpoint in inboundEndpoints: {
+resource dnsResolver_inboundEndpoint 'Microsoft.Network/dnsResolvers/inboundEndpoints@2025-05-01' = [for inboundEndpoint in inboundEndpoints: {
   name: inboundEndpoint.name
   parent: dnsResolver
   location: location
@@ -70,7 +70,7 @@ resource dnsResolver_inboundEndpoint 'Microsoft.Network/dnsResolvers/inboundEndp
   }
 }]
 
-resource dnsResolver_outboundEndpoint 'Microsoft.Network/dnsResolvers/outboundEndpoints@2022-07-01' = [for outboundEndpoint in outboundEndpoints: {
+resource dnsResolver_outboundEndpoint 'Microsoft.Network/dnsResolvers/outboundEndpoints@2025-05-01' = [for outboundEndpoint in outboundEndpoints: {
   name: outboundEndpoint.name
   parent: dnsResolver
   location: location

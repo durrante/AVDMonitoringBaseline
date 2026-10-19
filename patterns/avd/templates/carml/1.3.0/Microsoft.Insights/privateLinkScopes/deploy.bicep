@@ -30,7 +30,7 @@ param enableDefaultTelemetry bool = true
 
 var enableReferencedModulesTelemetry = false
 
-resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (enableDefaultTelemetry) {
+resource defaultTelemetry 'Microsoft.Resources/deployments@2025-04-01' = if (enableDefaultTelemetry) {
   name: 'pid-47ed15a6-730a-4827-bcb4-0fd963ffbd82-${uniqueString(deployment().name, location)}'
   properties: {
     mode: 'Incremental'
@@ -42,11 +42,16 @@ resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (ena
   }
 }
 
-resource privateLinkScope 'Microsoft.Insights/privateLinkScopes@2019-10-17-preview' = {
+resource privateLinkScope 'Microsoft.Insights/privateLinkScopes@2021-09-01' = {
   name: name
   location: location
   tags: tags
-  properties: {}
+  properties: {
+    accessModeSettings: {
+      ingestionAccessMode: 'Open'
+      queryAccessMode: 'Open'
+    }
+  }
 }
 
 module privateLinkScope_scopedResource 'scopedResources/deploy.bicep' = [for (scopedResource, index) in scopedResources: {

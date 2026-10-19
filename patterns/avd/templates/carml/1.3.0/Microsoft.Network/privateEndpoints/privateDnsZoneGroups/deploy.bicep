@@ -12,7 +12,7 @@ param name string = 'default'
 @description('Optional. Enable telemetry via a Globally Unique Identifier (GUID).')
 param enableDefaultTelemetry bool = true
 
-resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (enableDefaultTelemetry) {
+resource defaultTelemetry 'Microsoft.Resources/deployments@2025-04-01' = if (enableDefaultTelemetry) {
   name: 'pid-47ed15a6-730a-4827-bcb4-0fd963ffbd82-${uniqueString(deployment().name)}'
   properties: {
     mode: 'Incremental'
@@ -31,11 +31,11 @@ var privateDnsZoneConfigs = [for privateDNSResourceId in privateDNSResourceIds: 
   }
 }]
 
-resource privateEndpoint 'Microsoft.Network/privateEndpoints@2022-07-01' existing = {
+resource privateEndpoint 'Microsoft.Network/privateEndpoints@2025-09-01' existing = {
   name: privateEndpointName
 }
 
-resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-07-01' = {
+resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2025-09-01' = {
   name: name
   parent: privateEndpoint
   properties: {

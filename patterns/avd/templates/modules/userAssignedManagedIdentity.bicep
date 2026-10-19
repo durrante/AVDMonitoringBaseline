@@ -2,7 +2,7 @@ param Location string
 param ManagedIdentityName string
 param RoleDefinitionId string
 
-resource userAssignedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
+resource userAssignedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' = {
   name: ManagedIdentityName
   location: Location
 }

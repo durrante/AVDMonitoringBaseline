@@ -7,12 +7,12 @@ param managedIdentityName string
 @description('Required. The name of the Action Group to create.')
 param actionGroupName string
 
-resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
+resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' = {
     name: managedIdentityName
     location: location
 }
 
-resource actionGroup 'Microsoft.Insights/actionGroups@2022-06-01' = {
+resource actionGroup 'Microsoft.Insights/actionGroups@2023-01-01' = {
     name: actionGroupName
     location: 'global'
 

@@ -41,6 +41,18 @@
               }
             },
             {
+              "name": "ScalingPlansArgApi",
+              "type": "Microsoft.Solutions.ArmApiControl",
+              "request": {
+                "method": "POST",
+                "path": "/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01",
+                "body": {
+                  "query": "resources | where type =~ 'microsoft.desktopvirtualization/scalingplans' | mv-expand ref = properties.hostPoolReferences | project id, name, subscriptionId, resourceGroup, hostPoolId = tolower(trim(' ', tostring(ref.hostPoolArmPath))) | where isnotempty(hostPoolId) | order by name asc",
+                  "options": { "top": 1000 }
+                }
+              }
+            },
+            {
               "name": "ResGroupsArgApi",
               "type": "Microsoft.Solutions.ArmApiControl",
               "request": {
@@ -484,6 +496,24 @@
               }
             },
             {
+              "name": "infoMessageScalingPlans",
+              "type": "Microsoft.Common.InfoBox",
+              "visible": "[greater(length(filter(steps('basics').ScalingPlansArgApi.data, (p) => contains(toLower(if(steps('AlertsConfig').optionVMMetrics, string(steps('AlertsConfig').hostPoolInfo), string(steps('AlertsConfig').HostPools))), concat('\"', p.hostPoolId, '\"')))), 0)]",
+              "options": {
+                "text": "[concat('Scaling plans found for the selected host pools (host pool -> scaling plan): ', string(map(filter(steps('basics').ScalingPlansArgApi.data, (p) => contains(toLower(if(steps('AlertsConfig').optionVMMetrics, string(steps('AlertsConfig').hostPoolInfo), string(steps('AlertsConfig').HostPools))), concat('\"', p.hostPoolId, '\"'))), (p) => concat(last(split(p.hostPoolId, '/')), ' -> ', p.name, ' (', p.resourceGroup, ')'))), '. The Automation Account will be granted Desktop Virtualization Reader on each scaling plan resource group so the Scaling Plan Disabled and Scaling Plan Removed alerts can read them. If you assign a scaling plan from another resource group, or move one, after deploying, redeploy the solution so access is granted.')]",
+                "style": "Info"
+              }
+            },
+            {
+              "name": "infoMessageNoScalingPlan",
+              "type": "Microsoft.Common.InfoBox",
+              "visible": "[greater(length(filter(if(steps('AlertsConfig').optionVMMetrics, map(coalesce(steps('AlertsConfig').hostPoolInfo, parse('[]')), (r) => r.colHostPoolName), coalesce(steps('AlertsConfig').HostPools, parse('[]'))), (h) => not(contains(toLower(string(steps('basics').ScalingPlansArgApi.data)), concat('\"hostpoolid\":\"', toLower(h), '\"'))))), 0)]",
+              "options": {
+                "text": "[concat('These selected host pools have no scaling plan assigned, so the Scaling Plan Disabled and Scaling Plan Removed alerts will not apply to them (all other alerts are unaffected): ', string(map(filter(if(steps('AlertsConfig').optionVMMetrics, map(coalesce(steps('AlertsConfig').hostPoolInfo, parse('[]')), (r) => r.colHostPoolName), coalesce(steps('AlertsConfig').HostPools, parse('[]'))), (h) => not(contains(toLower(string(steps('basics').ScalingPlansArgApi.data)), concat('\"hostpoolid\":\"', toLower(h), '\"')))), (h) => last(split(h, '/')))), '. This is expected for host pools that are intentionally always on, or scaled by another tool.')]",
+                "style": "Warning"
+              }
+            },
+            {
               "name": "optionAzFiles",
               "type": "Microsoft.Common.CheckBox",
               "label": "Configure Alerts for Azure Files",
@@ -620,6 +650,7 @@
         "Environment": "[steps('AlertsConfig').Environment]",
         "HostPoolInfo": "[steps('AlertsConfig').hostPoolInfo]",
         "HostPools": "[steps('AlertsConfig').HostPools]",
+        "ScalingPlanResourceIds": "[map(filter(steps('basics').ScalingPlansArgApi.data, (p) => contains(toLower(if(steps('AlertsConfig').optionVMMetrics, string(steps('AlertsConfig').hostPoolInfo), string(steps('AlertsConfig').HostPools))), concat('\"', p.hostPoolId, '\"'))), (p) => p.id)]",
         "LogAnalyticsWorkspaceResourceId": "[steps('AlertsConfig').LAWSection.LogAnalyticsWorkspaceResource]",
         "ResourceGroupName": "[if(equals(steps('AlertsConfig').ResourceGroupStatus, 'New'), steps('AlertsConfig').resourceGroupNameNew, last(split(steps('AlertsConfig').resourceGroupNameExisting, '/')))]",
         "ResourceGroupStatus": "[steps('AlertsConfig').ResourceGroupStatus]",

@@ -441,7 +441,7 @@ var builtInRoleNames = {
   'WorkloadBuilder Migration Agent Role': '/providers/Microsoft.Authorization/roleDefinitions/d17ce0a2-0697-43bc-aac5-9113337ab61c'
 }
 
-resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (enableDefaultTelemetry) {
+resource defaultTelemetry 'Microsoft.Resources/deployments@2025-04-01' = if (enableDefaultTelemetry) {
   name: 'pid-47ed15a6-730a-4827-bcb4-0fd963ffbd82-${uniqueString(deployment().name, location)}'
   location: location
   properties: {

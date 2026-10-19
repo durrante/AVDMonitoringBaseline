@@ -23,12 +23,12 @@ param enableDefaultTelemetry bool = true
 
 // General resources
 // =================
-resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
+resource resourceGroup 'Microsoft.Resources/resourceGroups@2025-04-01' = {
   name: resourceGroupName
   location: location
 }
 
-resource policyDefinition 'Microsoft.Authorization/policyDefinitions@2021-06-01' = {
+resource policyDefinition 'Microsoft.Authorization/policyDefinitions@2026-07-01' = {
   name: 'dep-<<namePrefix>>-polDef-AuditKvlt-${serviceShort}'
   properties: {
     policyRule: {
@@ -56,7 +56,7 @@ resource policyDefinition 'Microsoft.Authorization/policyDefinitions@2021-06-01'
   }
 }
 
-resource policySet 'Microsoft.Authorization/policySetDefinitions@2021-06-01' = {
+resource policySet 'Microsoft.Authorization/policySetDefinitions@2026-07-01' = {
   name: 'dep-<<namePrefix>>-polSet-${serviceShort}'
   properties: {
     policyDefinitions: [
@@ -73,7 +73,7 @@ resource policySet 'Microsoft.Authorization/policySetDefinitions@2021-06-01' = {
   }
 }
 
-resource policySetAssignment 'Microsoft.Authorization/policyAssignments@2021-06-01' = {
+resource policySetAssignment 'Microsoft.Authorization/policyAssignments@2026-07-01' = {
   name: 'dep-<<namePrefix>>-psa-${serviceShort}'
   location: location
   properties: {

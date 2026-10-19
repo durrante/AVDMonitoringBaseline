@@ -4,6 +4,19 @@ For information on what's new please refer to the [Releases](https://github.com/
 
 To update your current deployment with the content from the latest release, please refer to the [Update to new release](Update-to-new-Release.md) page.
 
+## 2026-10-19 — v2.6.0 (this fork)
+
+- **Six new host pool alerts**, each built to fire only when something is genuinely wrong, and to stay quiet during routine work:
+  - **Scaling Plan Disabled over 4 / 24 Hours** (Sev3 / Sev2): autoscale switched off on a host pool and left off. Checks the actual setting, so it covers pooled and personal host pools, and host pools using session host configuration.
+  - **Scaling Plan Removed** (Sev3): a one-time notification when a host pool loses its scaling plan for over 4 hours.
+  - **VM-Agent Upgrade Failed or Stuck** (Sev3): AVD agent upgrades that fail or hang, which the Health Check Failure alert misses.
+  - **VM-Drained and Idle over 24 Hours** (Sev3): a session host left in drain mode, running and empty for a day.
+  - **Autoscale Failures** (Sev3): autoscale is on but failing to start or stop hosts. Needs the "Autoscale logs for pooled host pools" diagnostic category.
+  - **Diagnostic Data Not Received** (Sev2): a host pool with active users that has stopped sending diagnostic data, which would otherwise silently blind most of the other alerts.
+- **Scaling plans in other resource groups just work.** The deployment form finds the scaling plans assigned to your selected host pools, shows them, warns about host pools with no plan, and grants the runbook read access wherever each plan lives.
+- **Docs fix:** the host pool and storage runbooks run every 15 minutes (the FAQ said 5, via a Logic App that is not deployed).
+- **Redeploy to upgrade**, so the updated runbook is picked up. Full details, including what each alert deliberately ignores, in the [change log](../patterns/avd/CHANGES.md).
+
 ## 2026-07-17 — v2.5.0 (this fork)
 
 - **Deploy once for multi-subscription, multi-region estates.** Host pools, session host VM resource groups and storage accounts can now live in different subscriptions and regions from the alerts deployment (and from each other). The portal pickers list resources across every subscription you can read, the host pool runbook collects data across subscriptions, and every metric alert automatically targets the monitored resource's own region. One deployment per Log Analytics workspace now covers the whole estate, where previously a deployment was needed per subscription and everything had to share the deployment region. Note: all selected host pools must send AVD Insights data to the single Log Analytics workspace chosen at deployment.

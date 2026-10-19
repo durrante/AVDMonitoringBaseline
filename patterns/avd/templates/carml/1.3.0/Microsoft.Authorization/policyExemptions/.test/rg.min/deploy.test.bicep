@@ -23,12 +23,12 @@ param enableDefaultTelemetry bool = true
 
 // General resources
 // =================
-resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
+resource resourceGroup 'Microsoft.Resources/resourceGroups@2025-04-01' = {
   name: resourceGroupName
   location: location
 }
 
-resource policyAssignment 'Microsoft.Authorization/policyAssignments@2021-06-01' = {
+resource policyAssignment 'Microsoft.Authorization/policyAssignments@2026-07-01' = {
   name: 'dep-<<namePrefix>>-${serviceShort}-rgloc'
   location: location
   properties: {

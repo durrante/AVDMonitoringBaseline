@@ -15,6 +15,9 @@ An AVD deployment with associated Insights configuration per the AVD Portal's AV
     - Workspace Diagnostics enabled
     - Data Collection Rule associated with the Log Analytics Workspace
 4. Storage either Azure Files or Azure NetApp Files configured for FSLogix Profiles (optional)
+5. For the Autoscale Failures alert only: the **Autoscale logs for pooled host pools** category added to the host pool diagnostic settings (optional)
+
+> **Scaling plans:** the deployment form looks up the scaling plans assigned to the host pools you select. It shows which plan each host pool uses, and grants the Automation Account read access to each plan's resource group, including plans in other resource groups or subscriptions. It also warns about selected host pools with no scaling plan, as the Scaling Plan Disabled and Removed alerts do not apply to those. If you assign or move a scaling plan after deploying, redeploy so access is granted. See the [FAQ](FAQ.md#why-dont-the-scaling-plan-alerts-fire-for-my-host-pool).
 
 ## Deploy via the Azure Portal UI
 

@@ -179,7 +179,7 @@ var builtInRoleNames = {
   'Workbook Reader': subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b279062a-9be3-42a0-92ae-8b3cf002ec4d')
 }
 
-resource metricAlert 'Microsoft.Insights/metricAlerts@2018-03-01' existing = {
+resource metricAlert 'Microsoft.Insights/metricAlerts@2026-01-01' existing = {
   name: last(split(resourceId, '/'))!
 }
 

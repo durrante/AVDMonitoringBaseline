@@ -8,7 +8,7 @@ param Tags object
 
 // Metric alerts require targetResourceRegion to match the MONITORED resource's region,
 // which may differ from the deployment region (cross-region/cross-subscription monitoring).
-resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
+resource storageAccount 'Microsoft.Storage/storageAccounts@2026-04-01' existing = {
   name: split(StorageAccountResourceID, '/')[8]
   scope: resourceGroup(split(StorageAccountResourceID, '/')[2], split(StorageAccountResourceID, '/')[4])
 }

@@ -130,7 +130,7 @@ var diagnosticsMetrics = [for metric in diagnosticMetricsToEnable: {
   }
 }]
 
-resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (enableDefaultTelemetry) {
+resource defaultTelemetry 'Microsoft.Resources/deployments@2025-04-01' = if (enableDefaultTelemetry) {
   name: 'pid-47ed15a6-730a-4827-bcb4-0fd963ffbd82-${uniqueString(deployment().name)}'
   properties: {
     mode: 'Incremental'
@@ -142,7 +142,7 @@ resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (ena
   }
 }
 
-resource trafficManagerProfile 'Microsoft.Network/trafficmanagerprofiles@2018-08-01' = {
+resource trafficManagerProfile 'Microsoft.Network/trafficmanagerprofiles@2022-04-01' = {
   name: name
   tags: tags
   location: 'global'

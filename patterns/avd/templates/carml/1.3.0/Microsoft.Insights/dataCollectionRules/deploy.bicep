@@ -54,7 +54,7 @@ param tags object = {}
 //   Deployments   //
 // =============== //
 
-resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (enableDefaultTelemetry) {
+resource defaultTelemetry 'Microsoft.Resources/deployments@2025-04-01' = if (enableDefaultTelemetry) {
   name: 'pid-47ed15a6-730a-4827-bcb4-0fd963ffbd82-${uniqueString(deployment().name, location)}'
   properties: {
     mode: 'Incremental'
@@ -66,7 +66,7 @@ resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (ena
   }
 }
 
-resource dataCollectionRule 'Microsoft.Insights/dataCollectionRules@2021-09-01-preview' = {
+resource dataCollectionRule 'Microsoft.Insights/dataCollectionRules@2024-03-11' = {
   kind: kind
   location: location
   name: name
@@ -81,7 +81,7 @@ resource dataCollectionRule 'Microsoft.Insights/dataCollectionRules@2021-09-01-p
   }
 }
 
-resource dataCollectionRule_lock 'Microsoft.Authorization/locks@2017-04-01' = if (!empty(lock)) {
+resource dataCollectionRule_lock 'Microsoft.Authorization/locks@2020-05-01' = if (!empty(lock)) {
   name: '${dataCollectionRule.name}-${lock}-lock'
   properties: {
     level: any(lock)

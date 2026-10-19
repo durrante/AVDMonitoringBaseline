@@ -57,6 +57,7 @@ An AVD deployment with AVD Insights configured per the AVD portal's Insights con
      - Performance counter `\LogicalDisk(C:)\% Free Space` into the `Perf` table (local disk alerts)
      - Windows event logs `Microsoft-FSLogix-Apps/Operational` and `Microsoft-FSLogix-Apps/Admin` into the `Event` table (FSLogix alerts)
 4. Storage, either Azure Files or Azure NetApp Files, for FSLogix profiles (optional)
+5. For the Autoscale Failures alert only: the **Autoscale logs for pooled host pools** category added to the host pool diagnostic settings (optional, populates `WVDAutoscaleEvaluationPooled`)
 
 > **Note on the memory alerts:** the Available Memory alerts are now scheduled query rules against the `Perf` table instead of platform metric alerts. If you deployed the default AVD Insights DCR, no extra configuration is needed, as `\Memory\Available Mbytes` is part of its standard counter set. The change was made because the platform metric emits a 0 sample as a session host powers on (common with autoscale), which fired false "memory critically low" alerts. The KQL version skips hosts that haven't been reporting performance data for the full evaluation window, so hosts are only evaluated once they're properly up.
 
@@ -75,10 +76,16 @@ The number of alert rules created may be multiple based on severity and/or addit
 
 | Name                                                                      | Threshold(s) (Severity)    |  Signal Type   |  Frequency          |  # Alert Rules |
 |---                                                                        |---                         |---             |---                  |---          |
+| AVD-HostPool-Autoscale Failures (hostpoolname) (4.) (5.)                  | (3)                        | Log Analytics  |  15 min             |  1/hostpool |
 | AVD-HostPool-Capacity (1.)                                                | 95% (1) / 85% (2) / 50% (3)| Log Analytics  |  5 min              |  3/hostpool |
+| AVD-HostPool-Diagnostic Data Not Received (hostpoolname) (1.) (4.)        | (2)                        | Log Analytics  |  15 min             |  1/hostpool |
 | AVD-HostPool-Disconnected User over n Hours (hostpoolname)                | 24 (1) / 72 (2)            | Log Analytics  |  1 hour             |  2/hostpool |
 | AVD-HostPool-No Resources Available (hostpoolname)                        | Any are Sev1               | Log Analytics  |  15 min             |  1/hostpool |
+| AVD-HostPool-Scaling Plan Disabled over n Hours (hostpoolname) (1.) (4.)  | 4 (3) / 24 (2)             | Log Analytics  |  30 min (3) / 6 hours (2) |  2/hostpool |
+| AVD-HostPool-Scaling Plan Removed (hostpoolname) (1.) (4.)                | 4 hours (3), fires once    | Log Analytics  |  1 hour             |  1/hostpool |
+| AVD-HostPool-VM-Agent Upgrade Failed or Stuck (hostpoolname) (4.)         | (3)                        | Log Analytics  |  1 hour             |  1/hostpool |
 | AVD-HostPool-VM-Available Memory Less Than nGB (hostpoolname) (3.)        | 1gb (Sev1) / 2gb (Sev2)    | Log Analytics  |  5 min              |  2/hostpool |
+| AVD-HostPool-VM-Drained and Idle over 24 Hours (hostpoolname) (4.)        | (3)                        | Log Analytics  |  1 hour             |  1/hostpool |
 | AVD-HostPool-VM-FSLogix Profile DiskCompactFailed (hostpoolname)          | (2)                        | Log Analytics  |  5 min              |  1/hostpool |
 | AVD-HostPool-VM-FSLogix Profile FailedAttachVHD (hostpoolname)            | (1)                        | Log Analytics  |  5 min              |  1/hostpool |
 | AVD-HostPool-VM-FSLogix Profile Less Than n% Free Space (hostpoolname)    | 2% (1) / 5% (2)            | Log Analytics  |  5 min              |  2/hostpool |
@@ -107,6 +114,8 @@ The number of alert rules created may be multiple based on severity and/or addit
 1. Alert based on associated Automation Account / Runbook
 2. See ['How to create an alert if a file share is throttled'](https://docs.microsoft.com/azure/storage/files/storage-troubleshooting-files-performance#how-to-create-an-alert-if-a-file-share-is-throttled). Both Standard and Premium values are incorporated into the alert rule. Service Health alert severity cannot be changed from 'Verbose'.
 3. Modified from the original baseline in this fork, see [CHANGES.md](patterns/avd/CHANGES.md)
+4. New in this fork (v2.6.0), see [CHANGES.md](patterns/avd/CHANGES.md) for what each alert looks for and what it deliberately ignores
+5. Requires the **Autoscale logs for pooled host pools** category in the host pool diagnostic settings (pooled host pools only); without it the alert never fires
 
 ## 📚 Documentation
 

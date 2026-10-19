@@ -19,7 +19,7 @@ param enableDefaultTelemetry bool = true
 
 // General resources
 // =================
-resource policyAssignment 'Microsoft.Authorization/policyAssignments@2021-06-01' = {
+resource policyAssignment 'Microsoft.Authorization/policyAssignments@2026-07-01' = {
   name: 'dep-<<namePrefix>>-${serviceShort}-rgloc'
   location: location
   properties: {

@@ -49,7 +49,7 @@ var accountSasProperties = {
   signedProtocol: 'https'
 }
 
-resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (enableDefaultTelemetry) {
+resource defaultTelemetry 'Microsoft.Resources/deployments@2025-04-01' = if (enableDefaultTelemetry) {
   name: 'pid-47ed15a6-730a-4827-bcb4-0fd963ffbd82-${uniqueString(deployment().name, location)}'
   properties: {
     mode: 'Incremental'
@@ -61,11 +61,11 @@ resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (ena
   }
 }
 
-resource automationAccount 'Microsoft.Automation/automationAccounts@2022-08-08' existing = {
+resource automationAccount 'Microsoft.Automation/automationAccounts@2024-10-23' existing = {
   name: automationAccountName
 }
 
-resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' existing = if (!empty(scriptStorageAccountId)) {
+resource storageAccount 'Microsoft.Storage/storageAccounts@2026-04-01' existing = if (!empty(scriptStorageAccountId)) {
   name: last(split(scriptStorageAccountId, '/'))!
   scope: resourceGroup(split(scriptStorageAccountId, '/')[2], split(scriptStorageAccountId, '/')[4])
 }
@@ -75,7 +75,7 @@ var publishContentLink = empty(uri) ? null : {
   version: !empty(version) ? version : null
 }
 
-resource runbook 'Microsoft.Automation/automationAccounts/runbooks@2022-08-08' = {
+resource runbook 'Microsoft.Automation/automationAccounts/runbooks@2024-10-23' = {
   name: name
   parent: automationAccount
   location: location

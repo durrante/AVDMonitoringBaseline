@@ -2,7 +2,82 @@
 
 This fork of [Azure/azure-monitor-baseline-alerts](https://github.com/Azure/azure-monitor-baseline-alerts) (`patterns/avd`) is maintained independently because upstream development of the AVD pattern has gone stale. This document lists every functional change from the upstream baseline (upstream `main` as of commit `ba0266b3`, template v2.2.1) so users migrating from the original solution can see exactly what differs.
 
-**Current version: v2.5.0** (2026-07-17)
+**Current version: v2.6.0** (2026-10-19)
+
+---
+
+## v2.6.0 (2026-10-19) — this fork
+
+Six new host pool alerts (seven alert rules), each designed around one question: does it fire only when something is genuinely wrong? Every alert below lists what it looks for, the problem it catches, and what it deliberately ignores. Like every alert in this solution, they deploy **disabled**.
+
+### 1. New: Scaling Plan Disabled over 4 Hours (Sev3) / over 24 Hours (Sev2)
+
+**Catches:** autoscale turned off on a host pool's scaling plan assignment, typically for maintenance, and not turned back on. Session hosts are then left running out of hours (cost) or not started when users need them (capacity).
+
+**How:** the Host Pool Info runbook now reads the scaling plan assigned to each host pool and reports its state for that pool (see item 7). The alert fires when every runbook run across the window reports `Disabled`. The enable flag lives on the scaling plan's reference to each host pool, so a plan shared by several pools alerts only for the pool(s) where it is disabled.
+
+**Deliberately ignores:** host pools with no scaling plan (see Scaling Plan Removed), failed lookups, and runbook outages. At least 75% of the expected runs must be present (12 of 16 in 4 hours, 72 of 96 in 24 hours). The 4 hour tier gives routine maintenance time to finish. The 24 hour tier is evaluated every 6 hours, so a plan intentionally left disabled does not notify every hour when auto-resolve is turned off.
+
+**Why not "no autoscale evaluations logged"?** That was the obvious approach, but autoscale logging volume drops to around 2 evaluations an hour overnight and at weekends (measured on a production workspace), and the logs need a diagnostic category most deployments do not have. Reading the actual setting avoids both problems and also covers personal host pools and host pools using session host configuration.
+
+### 2. New: Scaling Plan Removed (Sev3)
+
+**Catches:** a host pool that had a scaling plan and now has none, for example removed during a rebuild and never reassigned. Scaling Plan Disabled cannot see this, because a pool with no plan looks the same as one that never had one.
+
+**How:** a one-time change notification. It fires once, roughly 4 hours after the removal, if no plan has been reassigned in that time, and names the removed plan. It closes at the next hourly check, so a "resolved" notice does not mean the plan was reassigned (stated in the alert description).
+
+**Deliberately ignores:** a plan removed and re-added within 4 hours, a host pool moved to a different scaling plan, a deleted host pool, failed lookups and runbook outages. It **can** fire if the Automation Account loses read access to the plan or the plan moves resource group: the alert is then still useful, as the Scaling Plan Disabled alerts can no longer see that plan.
+
+### 3. New: VM-Agent Upgrade Failed or Stuck (Sev3)
+
+**Catches:** a session host whose AVD agent upgrade failed and has not recovered for an hour, or has been stuck upgrading for over 2 hours. Microsoft documents that sessions are not affected straight away, but the host falls behind on agent versions, and the failure usually points to an underlying problem (low disk space, security software blocking the agent). The existing Health Check Failure alert misses this, as it only matches hosts with a failing health check.
+
+**Deliberately ignores:** the `Pending` and `Initial` upgrade states, which are normal (on a production workspace `Pending` made up about 9,300 rows in 30 days with no failures), retries that succeed within an hour, and hosts in drain mode, which are often on their way out of service.
+
+### 4. New: VM-Drained and Idle over 24 Hours (Sev3)
+
+**Catches:** a session host left in drain mode, powered on and with no user sessions for 24 hours, usually after troubleshooting or maintenance. It cannot take new users and is costing compute for nothing.
+
+**Deliberately ignores:** drained hosts that still have users (likely being drained out of service), drained hosts that are switched off (they only cost disk), and short drains during session host configuration updates or patching. The host must report in at least 22 of the 24 hourly periods and still be running.
+
+### 5. New: Autoscale Failures (Sev3)
+
+**Catches:** autoscale enabled but failing, so hosts are not started or stopped. Common causes: the AVD service principal missing the Desktop Virtualization Power On Off Contributor role, VM capacity or quota, a resource lock, or an Azure Policy. The last error code is included.
+
+**How:** fires when at least 2 evaluations fail and none succeed in an hour. A fixed count such as "3 failures an hour" could never trigger overnight, when autoscale may only log 2 evaluations an hour. Requiring zero successes absorbs one-off failures, such as autoscale acting on a VM being deleted during host replacement.
+
+**Requires:** the **Autoscale logs for pooled host pools** category in the host pool diagnostic settings (pooled host pools only). Without it the alert never fires.
+
+### 6. New: Diagnostic Data Not Received (Sev2)
+
+**Catches:** a host pool whose diagnostic settings were removed or redirected, for example after a host pool was redeployed from code without them, or an Azure Policy overwrote them. Most log based alerts in this solution depend on that data, so without this alert they all go silent unnoticed.
+
+**How:** the runbook, which reads Azure Resource Manager and not diagnostics, saw user sessions in every run for the past hour, yet no `WVDAgentHealthStatus` data arrived from the host pool. Running session hosts report roughly every 30 seconds.
+
+**Deliberately ignores:** host pools that scale to zero (no sessions overnight means no alert).
+
+### 7. Host Pool Info runbook reports the scaling plan for each host pool
+
+`Get-HostPoolInfo.ps1` appends two fields to its pipe-delimited output: `ScalingPlanName` (index 13) and `ScalingPlanState` (index 14), one of `Enabled`, `Disabled`, `None` (no plan assigned) or `Unknown` (lookup failed). They are appended at the end, so existing alerts that read fields by position are unaffected. The plan is found with the list-by-host-pool API (`Get-AzWvdScalingPlan -HostPoolName`), and its enabled flag is read from that plan's reference to the host pool.
+
+### 8. Read access on scaling plan resource groups, and a deployment form that shows it
+
+A scaling plan can live in a different resource group, or subscription, from the host pools it serves. If the runbook cannot read the plan, the pool looks like it has no plan and the scaling plan alerts stay silent. To prevent that:
+
+- **Template:** a new optional parameter `ScalingPlanResourceIds`. The Automation Account identity is granted Desktop Virtualization Reader on each scaling plan's resource group that is not already covered by the host pool or VM resource group assignments (compared case-insensitively, so no duplicate assignments).
+- **Portal form:** looks up scaling plans via Azure Resource Graph, passes the plans assigned to the selected host pools, and shows two messages. An info box lists each selected host pool with its scaling plan and resource group. A warning lists selected host pools with **no** scaling plan, as the scaling plan alerts do not apply to them.
+- **Docs:** a new FAQ entry explains when the scaling plan alerts stay silent, including the need to redeploy after assigning or moving a plan later, and includes a query to check what the runbook reports.
+
+### 9. Documentation corrections
+
+- The FAQ said a Logic App ran the runbooks every 5 minutes. The solution uses four hourly Automation schedules offset by 15 minutes, so the runbooks run **every 15 minutes**, and no Logic App is deployed. Corrected.
+- The alert description header still said v2.4.0. It now says v2.6.0.
+
+### Upgrade notes
+
+- **Redeploy to pick up the new runbook.** The runbook script is fetched from the artifacts location at deployment time. Until it is updated, the scaling plan fields are empty and the three Scaling Plan alert rules simply stay silent. The other new alerts do not depend on the runbook change.
+- If you previously granted Desktop Virtualization Reader manually on a scaling plan's resource group to the Automation Account identity, remove it before redeploying, otherwise the deployment fails with `RoleAssignmentExists`.
+- The Autoscale Failures alert needs the "Autoscale logs for pooled host pools" diagnostic category. Enable it before turning the alert on.
 
 ---
 

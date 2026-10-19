@@ -47,6 +47,9 @@ param HostPoolInfo array = []
 @description('Host Pool Resource IDs (array)')
 param HostPools array = []
 
+@description('Optional. Resource IDs of the scaling plans assigned to the selected host pools. The Automation Account is granted Desktop Virtualization Reader on their resource groups so the scaling plan alerts can read them when a plan lives outside the host pool resource group. The portal form fills this in automatically.')
+param ScalingPlanResourceIds array = []
+
 @description('Azure Region for Resources.')
 param Location string = deployment().location
 
@@ -79,7 +82,7 @@ param ANFVolumeResourceIds array = []
 param Tags object = {}
 
 var ActionGroupName = 'ag-avdmetrics-${Environment}-${Location}-${uniqueString(subscription().displayName)}'
-var AlertDescriptionHeader = empty(CustomerName) ? 'Automated AVD Alert Deployment Solution (v2.4.0)\n' : 'Customer: ${CustomerName}\nAutomated AVD Alert Deployment Solution (v2.4.0)\n' // DESCRIPTION HEADER AND VERSION <-----------------------------
+var AlertDescriptionHeader = empty(CustomerName) ? 'Automated AVD Alert Deployment Solution (v2.6.0)\n' : 'Customer: ${CustomerName}\nAutomated AVD Alert Deployment Solution (v2.6.0)\n' // DESCRIPTION HEADER AND VERSION <-----------------------------
 var AutomationAccountName = 'aa-avdmetrics-${Environment}-${Location}-${AlertNamePrefix}'
 var CloudEnvironment = environment().name
 var ResourceGroupCreate = ResourceGroupStatus == 'New' ? true : false
@@ -1593,6 +1596,444 @@ var LogAlertsHostPool = [
       ]
     }
   }
+  {
+    // Based on Runbook script Output to LAW (ScalingPlanName and ScalingPlanState are fields 13 and 14)
+    name: '${AlertNamePrefix}-HP-ScalPlanDisabled4Hrs-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-Scaling Plan Disabled over 4 Hours (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}Autoscale has been disabled for host pool xHostPoolNamex on its scaling plan host pool assignment for over 4 hours. While disabled, autoscale does not start or stop session hosts, so hosts can be left running (cost) or not started when users need them (capacity). If this is planned maintenance, re-enable autoscale on the scaling plan host pool assignment when the work is complete, or suppress this alert for the maintenance window with an alert processing rule. Based on the Automation Account runbook output, which checks the scaling plan every 15 minutes.'
+    severity: 3
+    evaluationFrequency: 'PT30M'
+    windowSize: 'PT4H'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          AzureDiagnostics
+          | where TimeGenerated > ago(4h)
+          | where Category has "JobStreams" and StreamType_s == "Output" and RunbookName_s == "AvdHostPoolLogData"
+          | extend HostPoolName=tostring(split(ResultDescription, '|')[0])
+          | extend ScalingPlanName=trim(@"\s", tostring(split(ResultDescription, '|')[13]))
+          | extend ScalingPlanState=trim(@"\s", tostring(split(ResultDescription, '|')[14]))
+          | where HostPoolName =~ 'xHostPoolNamex'
+          // Every runbook run in the window must report Disabled, and at least 12 of the 16 runs expected
+          // in 4 hours must have arrived, so a runbook outage or failed lookup (Unknown) never raises the alert
+          | summarize RunCount=count(), DisabledRuns=countif(ScalingPlanState == 'Disabled'), ScalingPlanName=take_anyif(ScalingPlanName, ScalingPlanState == 'Disabled') by HostPoolName
+          | where RunCount >= 12 and DisabledRuns == RunCount
+          | project HostPoolName, ScalingPlanName
+          '''
+          timeAggregation: 'Count'
+          dimensions: [
+            {
+              name: 'HostPoolName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'ScalingPlanName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 1
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
+    // Based on Runbook script Output to LAW (ScalingPlanName and ScalingPlanState are fields 13 and 14)
+    name: '${AlertNamePrefix}-HP-ScalPlanDisabled24Hrs-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-Scaling Plan Disabled over 24 Hours (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}Autoscale has been disabled for host pool xHostPoolNamex on its scaling plan host pool assignment for over 24 hours. This usually means autoscale was turned off for maintenance and not turned back on: session hosts may be running outside working hours (cost) or not starting when users need them (capacity). Re-enable autoscale on the scaling plan host pool assignment. If the plan is intentionally disabled long term, disable this alert rule for this host pool. Evaluated every 6 hours so an intentionally disabled plan does not notify every hour when auto-resolve is turned off.'
+    severity: 2
+    evaluationFrequency: 'PT6H'
+    windowSize: 'P1D'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          AzureDiagnostics
+          | where TimeGenerated > ago(24h)
+          | where Category has "JobStreams" and StreamType_s == "Output" and RunbookName_s == "AvdHostPoolLogData"
+          | extend HostPoolName=tostring(split(ResultDescription, '|')[0])
+          | extend ScalingPlanName=trim(@"\s", tostring(split(ResultDescription, '|')[13]))
+          | extend ScalingPlanState=trim(@"\s", tostring(split(ResultDescription, '|')[14]))
+          | where HostPoolName =~ 'xHostPoolNamex'
+          // Every runbook run in the window must report Disabled, and at least 72 of the 96 runs expected
+          // in 24 hours must have arrived, so a runbook outage or failed lookup (Unknown) never raises the alert
+          | summarize RunCount=count(), DisabledRuns=countif(ScalingPlanState == 'Disabled'), ScalingPlanName=take_anyif(ScalingPlanName, ScalingPlanState == 'Disabled') by HostPoolName
+          | where RunCount >= 72 and DisabledRuns == RunCount
+          | project HostPoolName, ScalingPlanName
+          '''
+          timeAggregation: 'Count'
+          dimensions: [
+            {
+              name: 'HostPoolName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'ScalingPlanName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 1
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
+    // Based on Runbook script Output to LAW (ScalingPlanName and ScalingPlanState are fields 13 and 14)
+    name: '${AlertNamePrefix}-HP-ScalPlanRemoved-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-Scaling Plan Removed (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}Host pool xHostPoolNamex had a scaling plan assigned, and for the last 4 hours it has had none. Without a scaling plan, autoscale does not start or stop session hosts for this host pool. If the removal was not intended, assign the scaling plan (shown in RemovedScalingPlan) to the host pool again. This can also be raised if the Automation Account identity lost read access to the scaling plan, or the scaling plan was moved to another resource group: redeploy the solution so access is granted again. This is a one-time change notification: it fires once per removal and closes at the next hourly check, so a resolved notice does NOT mean a scaling plan was reassigned.'
+    severity: 3
+    evaluationFrequency: 'PT1H'
+    windowSize: 'PT6H'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          let RunbookRuns = AzureDiagnostics
+          | where TimeGenerated > ago(6h)
+          | where Category has "JobStreams" and StreamType_s == "Output" and RunbookName_s == "AvdHostPoolLogData"
+          | extend HostPoolName=tostring(split(ResultDescription, '|')[0])
+          | extend ScalingPlanName=trim(@"\s", tostring(split(ResultDescription, '|')[13]))
+          | extend ScalingPlanState=trim(@"\s", tostring(split(ResultDescription, '|')[14]))
+          | where HostPoolName =~ 'xHostPoolNamex';
+          let LastWithPlan = RunbookRuns
+          | where ScalingPlanState in ('Enabled', 'Disabled')
+          | summarize arg_max(TimeGenerated, ScalingPlanName) by HostPoolName;
+          let RecentRuns = RunbookRuns
+          | where TimeGenerated > ago(4h)
+          | summarize RunCount=count(), NoPlanRuns=countif(ScalingPlanState == 'None') by HostPoolName;
+          LastWithPlan
+          | join kind=inner RecentRuns on HostPoolName
+          // Every run in the last 4 hours explicitly reported no plan (not Unknown), with at least 12 of the
+          // 16 expected runs present. Fires once per removal: only while the last run that still saw a plan
+          // is between 4 hours and 5 hours 10 minutes old, which the hourly check passes through once
+          | where RunCount >= 12 and NoPlanRuns == RunCount
+          | where TimeGenerated between (ago(310m) .. ago(4h))
+          | project HostPoolName, RemovedScalingPlan=ScalingPlanName, LastSeenWithPlan=tostring(TimeGenerated)
+          '''
+          timeAggregation: 'Count'
+          dimensions: [
+            {
+              name: 'HostPoolName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'RemovedScalingPlan'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'LastSeenWithPlan'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 1
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
+    name: '${AlertNamePrefix}-HP-VM-AgentUpgrdFailed-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-VM-Agent Upgrade Failed or Stuck (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}The Azure Virtual Desktop agent on a session host in xHostPoolNamex failed to upgrade (and has not recovered for over an hour), or has been stuck upgrading for over 2 hours. Existing and new user sessions are not affected straight away, but the host falls behind on agent versions and the failure often points to an underlying problem such as low disk space or security software blocking the agent. See https://learn.microsoft.com/troubleshoot/azure/virtual-desktop/troubleshoot-agent. Hosts in drain mode are excluded. An UpgradeState of Pending is normal (the update is waiting for its window) and never raises this alert.'
+    severity: 3
+    evaluationFrequency: 'PT1H'
+    windowSize: 'PT1H'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          WVDAgentHealthStatus
+          | where TimeGenerated > ago(1h)
+          | extend HostPool=tostring(split(_ResourceId, '/')[8])
+          | where HostPool =~ 'xHostPoolNamex'
+          | summarize arg_max(TimeGenerated, *) by SessionHostName
+          // Drained hosts are excluded: they are often on their way out of service, and a host left
+          // drained and idle for a day is covered by the Drained and Idle alert
+          | where AllowNewSessions =~ 'True'
+          | extend UpgradeFailed = Status in~ ('UpgradeFailed', 'Upgrade Failed') or UpgradeState =~ 'Failed'
+          | extend UpgradeStuck = Status =~ 'Upgrading'
+          // LastUpgradeTimeStamp is when the upgrade state last changed: allow a failed upgrade 1 hour to
+          // retry, and a running upgrade 2 hours to finish. Pending and Initial upgrade states never alert
+          | where (UpgradeFailed and (isnull(LastUpgradeTimeStamp) or LastUpgradeTimeStamp < ago(1h)))
+              or (UpgradeStuck and LastUpgradeTimeStamp < ago(2h))
+          | extend Problem=iff(UpgradeStuck, 'Stuck upgrading', 'Upgrade failed')
+          | parse SessionHostResourceId with "/subscriptions/" HostSubscription "/resourceGroups/" SessionHostRG "/providers/Microsoft.Compute/virtualMachines/" VMName
+          | project TimeGenerated, SessionHostName, HostPool, SessionHostRG, Problem, AgentVersion, UpgradeErrorMsg
+          '''
+          timeAggregation: 'Count'
+          dimensions: [
+            {
+              name: 'SessionHostName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'HostPool'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'SessionHostRG'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'Problem'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'AgentVersion'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'UpgradeErrorMsg'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 1
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
+    name: '${AlertNamePrefix}-HP-VM-DrainedIdle24Hrs-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-VM-Drained and Idle over 24 Hours (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}A session host in xHostPoolNamex has been in drain mode, powered on and without any user sessions for over 24 hours. It cannot take new users and is costing compute while idle, which usually means drain mode was turned on for troubleshooting or maintenance and not turned off. Turn off drain mode, deallocate the VM, or remove it from the host pool. Drained hosts that are switched off are deliberately ignored, as they only cost disk storage. If a host is meant to stay drained and running, suppress it with an alert processing rule filtered on the host name.'
+    severity: 3
+    evaluationFrequency: 'PT1H'
+    windowSize: 'P1D'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          WVDAgentHealthStatus
+          | where TimeGenerated > ago(24h)
+          | extend HostPool=tostring(split(_ResourceId, '/')[8])
+          | where HostPool =~ 'xHostPoolNamex'
+          | summarize RowCount=count(),
+              DrainedRows=countif(AllowNewSessions =~ 'False'),
+              MaxSessions=max(toint(ActiveSessions) + toint(InactiveSessions)),
+              HoursReporting=dcount(bin(TimeGenerated, 1h)),
+              LastSeen=max(TimeGenerated),
+              SessionHostResourceId=take_any(SessionHostResourceId)
+              by SessionHostName, HostPool
+          // Drained in every report for 24 hours, no user sessions at any point, powered on throughout
+          // (reporting in at least 22 of the hourly periods) and still running now
+          | where DrainedRows == RowCount and MaxSessions == 0
+          | where HoursReporting >= 22 and LastSeen > ago(1h)
+          | parse SessionHostResourceId with "/subscriptions/" HostSubscription "/resourceGroups/" SessionHostRG "/providers/Microsoft.Compute/virtualMachines/" VMName
+          | project SessionHostName, HostPool, SessionHostRG
+          '''
+          timeAggregation: 'Count'
+          dimensions: [
+            {
+              name: 'SessionHostName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'HostPool'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'SessionHostRG'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 1
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
+    name: '${AlertNamePrefix}-HP-AutoscaleFailures-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-Autoscale Failures (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}Autoscale is enabled for host pool xHostPoolNamex but every evaluation in the last hour failed (at least 2), so session hosts may not be starting or stopping as scheduled. Common causes: the Azure Virtual Desktop service principal is missing the Desktop Virtualization Power On Off Contributor role, insufficient VM capacity or quota in the region, a resource lock, or an Azure Policy blocking the action. Query WVDErrors by CorrelationId for details. REQUIRES the "Autoscale logs for pooled host pools" category in the host pool diagnostic settings (pooled host pools only); without it this alert never fires. Tip: during session host replacement, tag outgoing hosts with the scaling plan exclusion tag to avoid failed actions against VMs being deleted.'
+    severity: 3
+    evaluationFrequency: 'PT15M'
+    windowSize: 'PT1H'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          let Evaluations = WVDAutoscaleEvaluationPooled
+          | where TimeGenerated > ago(1h)
+          | extend HostPool=tostring(split(_ResourceId, '/')[8])
+          | where HostPool =~ 'xHostPoolNamex';
+          let LastFailure = Evaluations
+          | where ResultType != 'Succeeded'
+          | summarize arg_max(TimeGenerated, CorrelationId) by HostPool
+          | join kind=leftouter (
+              WVDErrors
+              | where TimeGenerated > ago(1h)
+              | summarize arg_max(TimeGenerated, CodeSymbolic) by CorrelationId
+            ) on CorrelationId
+          | project HostPool, LastErrorCode=coalesce(CodeSymbolic, 'See WVDErrors');
+          Evaluations
+          | summarize EvaluationCount=count(), FailedCount=countif(ResultType != 'Succeeded'), ScalingPlanResourceId=take_any(ScalingPlanResourceId) by HostPool
+          // At least 2 failed evaluations and none successful in the hour. Overnight, autoscale can log as few
+          // as 2 evaluations an hour, so a fixed failure count would miss problems; a single success clears it,
+          // which absorbs one-off failures such as a VM being deleted during host replacement
+          | where FailedCount >= 2 and FailedCount == EvaluationCount
+          | join kind=inner LastFailure on HostPool
+          | extend ScalingPlanName=tostring(split(ScalingPlanResourceId, '/')[-1])
+          | project HostPool, ScalingPlanName, FailedCount, LastErrorCode
+          '''
+          timeAggregation: 'Count'
+          dimensions: [
+            {
+              name: 'HostPool'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'ScalingPlanName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'LastErrorCode'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 1
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
+    // Combines Runbook script Output (reads ARM, not diagnostics) with the host pool diagnostic data
+    name: '${AlertNamePrefix}-HP-DiagDataNotRcvd-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-Diagnostic Data Not Received (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}Host pool xHostPoolNamex has had user sessions for the past hour, so session hosts are running, but no agent health data (WVDAgentHealthStatus) has reached the Log Analytics workspace in that time. Most log based alerts in this solution depend on this data, so they cannot fire for this host pool until it is fixed. Check the host pool diagnostic settings still exist and send the AgentHealthStatus, Checkpoint, Connection, Error, HostRegistration and Management categories to the workspace used by this solution. A common cause is a host pool redeployed from code that does not include its diagnostic settings, or an Azure Policy overwriting them.'
+    severity: 2
+    evaluationFrequency: 'PT15M'
+    windowSize: 'PT1H'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          let AgentHealthRows = toscalar(
+              WVDAgentHealthStatus
+              | where TimeGenerated > ago(1h)
+              | where tostring(split(_ResourceId, '/')[8]) =~ 'xHostPoolNamex'
+              | count);
+          AzureDiagnostics
+          | where TimeGenerated > ago(1h)
+          | where Category has "JobStreams" and StreamType_s == "Output" and RunbookName_s == "AvdHostPoolLogData"
+          | extend HostPoolName=tostring(split(ResultDescription, '|')[0])
+          | extend UserSessionsTotal=toint(split(ResultDescription, '|')[5])
+          | where HostPoolName =~ 'xHostPoolNamex'
+          // The runbook saw user sessions in every run for the past hour (at least 3 of the 4 expected runs),
+          // yet the host pool sent no agent health data, which running session hosts report every 30 seconds.
+          // Pools that scale to zero have no sessions overnight, so they never raise this alert
+          | summarize RunCount=count(), RunsWithSessions=countif(UserSessionsTotal > 0) by HostPoolName
+          | where RunCount >= 3 and RunsWithSessions == RunCount
+          | where AgentHealthRows == 0
+          | project HostPoolName
+          '''
+          timeAggregation: 'Count'
+          dimensions: [
+            {
+              name: 'HostPoolName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 1
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
 ]
 
 var LogAlertsStorage = [
@@ -2120,6 +2561,14 @@ var HostPoolSubIds = empty(HostPoolIdsSource)
   : union(map(HostPoolIdsSource, item => split(item, '/')[2]), [])
 var HostPoolSubRGs = union(map(HostPoolIdsSource, item => '${split(item, '/')[2]},${split(item, '/')[4]}'), [])
 var AVDRGScopeEntry = toLower('${split(AVDResourceGroupId, '/')[2]},${split(AVDResourceGroupId, '/')[4]}')
+// Scaling plans can live in a different resource group (or subscription) from the host pools they are
+// assigned to. Grant read on those resource groups too, skipping any already covered above (compared
+// case-insensitively) so the same role assignment is never created twice under different names
+var ScalingPlanSubRGs = union(map(ScalingPlanResourceIds, item => toLower('${split(item, '/')[2]},${split(item, '/')[4]}')), [])
+var DesktopReadCoveredSubRGs = union(
+  map(HostPoolSubRGs, item => toLower(item)),
+  AllResourcesSameRG ? [AVDRGScopeEntry] : map(HostPoolInfo, info => toLower('${split(info.colVMResGroup, '/')[2]},${split(info.colVMResGroup, '/')[4]}'))
+)
 var varScheduleName = 'AVD_Chk-'
 var varTimeZone = varTimeZones[Location]
 var varTimeZones = {
@@ -2201,7 +2650,7 @@ module resourceGroupAVDMetricsCreate 'carml/1.3.0/Microsoft.Resources/resourceGr
     }
   }
 
-resource resourceGroupAVDMetricsExisting 'Microsoft.Resources/resourceGroups@2022-09-01' existing = {
+resource resourceGroupAVDMetricsExisting 'Microsoft.Resources/resourceGroups@2025-04-01' existing = {
   name: ResourceGroupName
 }
 
@@ -2485,6 +2934,26 @@ module roleAssignment_AutoAcctDesktopReadHostPoolRGs 'carml/1.3.0/Microsoft.Auth
     dependsOn: [
       roleAssignment_AutoAcctDesktopRead
       roleAssignment_AutoAcctDesktopReadSameRG
+    ]
+  }
+]
+
+// Assign Desktop Virtualization Reader on each SCALING PLAN's resource group not already covered above,
+// so the Get-HostPoolInfo runbook can read scaling plans that live outside the host pool resource group.
+// Without this a plan in another resource group looks like "no scaling plan" and its alerts stay silent.
+module roleAssignment_AutoAcctDesktopReadScalingPlanRGs 'carml/1.3.0/Microsoft.Authorization/roleAssignments/resourceGroup/deploy.bicep' = [
+  for entry in ScalingPlanSubRGs: if (!contains(DesktopReadCoveredSubRGs, entry)) {
+    scope: resourceGroup(split(entry, ',')[0], split(entry, ',')[1])
+    name: 'c_DsktpReadSP_${uniqueString(entry)}'
+    params: {
+      enableDefaultTelemetry: false
+      principalId: automationAccount.outputs.systemAssignedPrincipalId
+      roleDefinitionIdOrName: 'Desktop Virtualization Reader'
+      principalType: 'ServicePrincipal'
+      resourceGroupName: split(entry, ',')[1]
+    }
+    dependsOn: [
+      roleAssignment_AutoAcctDesktopReadHostPoolRGs
     ]
   }
 ]

@@ -190,7 +190,7 @@ var diagnosticsMetrics = [for metric in diagnosticMetricsToEnable: {
 
 var enableReferencedModulesTelemetry = false
 
-resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (enableDefaultTelemetry) {
+resource defaultTelemetry 'Microsoft.Resources/deployments@2025-04-01' = if (enableDefaultTelemetry) {
   name: 'pid-47ed15a6-730a-4827-bcb4-0fd963ffbd82-${uniqueString(deployment().name, location)}'
   properties: {
     mode: 'Incremental'
@@ -233,7 +233,7 @@ module publicIPAddress '../../Microsoft.Network/publicIPAddresses/deploy.bicep' 
   }
 }
 
-resource azureFirewall 'Microsoft.Network/azureFirewalls@2022-07-01' = {
+resource azureFirewall 'Microsoft.Network/azureFirewalls@2025-09-01' = {
   name: name
   location: location
   zones: length(zones) == 0 ? null : zones

@@ -1,8 +1,14 @@
 Name,Threshold(s) (Severity),Signal Type,Frequency,# Alert Rules,Notes
+AVD-HostPool-Autoscale Failures (hostpoolname),(3),Log Analytics,15 min,1/hostpool,New in v2.6.0: requires the Autoscale logs for pooled host pools diagnostic category (pooled host pools only)
 AVD-HostPool-Capacity,95% (1) / 85% (2) / 50% (3),Log Analytics,5 min,3/hostpool,Based on associated Automation Account / Runbook
+AVD-HostPool-Diagnostic Data Not Received (hostpoolname),(2),Log Analytics,15 min,1/hostpool,New in v2.6.0: based on associated Automation Account / Runbook plus host pool diagnostics
 AVD-HostPool-Disconnected User over n Hours (hostpoolname),24 (1) / 72 (2),Log Analytics,1 hour,2/hostpool,
 AVD-HostPool-No Resources Available (hostpoolname),Any are Sev1,Log Analytics,15 min,1/hostpool,
+AVD-HostPool-Scaling Plan Disabled over n Hours (hostpoolname),4 (3) / 24 (2),Log Analytics,30 min (Sev3) / 6 hours (Sev2),2/hostpool,New in v2.6.0: based on associated Automation Account / Runbook
+AVD-HostPool-Scaling Plan Removed (hostpoolname),4 hours (3),Log Analytics,1 hour,1/hostpool,New in v2.6.0: based on associated Automation Account / Runbook; one-time change notification
+AVD-HostPool-VM-Agent Upgrade Failed or Stuck (hostpoolname),(3),Log Analytics,1 hour,1/hostpool,New in v2.6.0
 AVD-HostPool-VM-Available Memory Less Than nGB (hostpoolname),1gb (Sev1) / 2gb (Sev2),Log Analytics,5 min,2/hostpool,Modified in this fork: converted from metric to KQL alert to avoid power-on false positives
+AVD-HostPool-VM-Drained and Idle over 24 Hours (hostpoolname),(3),Log Analytics,1 hour,1/hostpool,New in v2.6.0
 AVD-HostPool-VM-FSLogix Profile DiskCompactFailed (hostpoolname),(2),Log Analytics,5 min,1/hostpool,
 AVD-HostPool-VM-FSLogix Profile FailedAttachVHD (hostpoolname),(1),Log Analytics,5 min,1/hostpool,
 AVD-HostPool-VM-FSLogix Profile Less Than n% Free Space (hostpoolname),2% (1) / 5% (2),Log Analytics,5 min,2/hostpool,

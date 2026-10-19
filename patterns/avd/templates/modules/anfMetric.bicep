@@ -8,17 +8,17 @@ param Tags object
 
 // Metric alerts require targetResourceRegion to match the MONITORED resource's region,
 // which may differ from the deployment region (cross-region/cross-subscription monitoring).
-resource anfAccount 'Microsoft.NetApp/netAppAccounts@2022-09-01' existing = {
+resource anfAccount 'Microsoft.NetApp/netAppAccounts@2026-06-01' existing = {
   name: split(ANFVolumeResourceID, '/')[8]
   scope: resourceGroup(split(ANFVolumeResourceID, '/')[2], split(ANFVolumeResourceID, '/')[4])
 }
 
-resource anfPool 'Microsoft.NetApp/netAppAccounts/capacityPools@2022-09-01' existing = {
+resource anfPool 'Microsoft.NetApp/netAppAccounts/capacityPools@2026-06-01' existing = {
   parent: anfAccount
   name: split(ANFVolumeResourceID, '/')[10]
 }
 
-resource anfVolume 'Microsoft.NetApp/netAppAccounts/capacityPools/volumes@2022-09-01' existing = {
+resource anfVolume 'Microsoft.NetApp/netAppAccounts/capacityPools/volumes@2026-06-01' existing = {
   parent: anfPool
   name: split(ANFVolumeResourceID, '/')[12]
 }

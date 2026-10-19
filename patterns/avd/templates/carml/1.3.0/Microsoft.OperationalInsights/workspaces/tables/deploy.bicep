@@ -41,7 +41,7 @@ param totalRetentionInDays int = -1
 //   Deployments   //
 // =============== //
 
-resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (enableDefaultTelemetry) {
+resource defaultTelemetry 'Microsoft.Resources/deployments@2025-04-01' = if (enableDefaultTelemetry) {
   name: 'pid-47ed15a6-730a-4827-bcb4-0fd963ffbd82-${uniqueString(deployment().name)}'
   properties: {
     mode: 'Incremental'
@@ -53,11 +53,11 @@ resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (ena
   }
 }
 
-resource workspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
+resource workspace 'Microsoft.OperationalInsights/workspaces@2026-03-01' existing = {
   name: workspaceName
 }
 
-resource table 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01' = {
+resource table 'Microsoft.OperationalInsights/workspaces/tables@2026-03-01' = {
   parent: workspace
   name: name
   properties: {

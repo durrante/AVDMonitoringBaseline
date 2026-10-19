@@ -51,7 +51,7 @@ var builtInRoleNames = {
   'User Access Administrator': subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9')
 }
 
-resource userMsi 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' existing = {
+resource userMsi 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' existing = {
   name: last(split(resourceId, '/'))!
 }
 

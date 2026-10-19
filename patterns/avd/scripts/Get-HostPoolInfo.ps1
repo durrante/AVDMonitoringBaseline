@@ -1,5 +1,7 @@
 <#
-LAST UPDTATE: July 2026
+LAST UPDTATE: October 2026
+-- October 2026: Appended ScalingPlanName and ScalingPlanState (fields 13 and 14) for the scaling plan
+   alerts. Appended at the end so the existing field positions used by other alerts are unchanged
 -- July 2026: SubscriptionId now accepts a comma-separated list so one Automation Account can
    collect host pool data across multiple subscriptions (single value remains fully supported)
 -- July 2023: Added info for Personal Host Pool Info regarding need for alert where assigned but unhealthy
@@ -56,6 +58,30 @@ Foreach($AVDHostPool in $AVDHostPools){
     $HPNumHostsAllowingSessions = (Get-AzWvdSessionHost -HostPoolName $HPName -ResourceGroupName $HPResGroup | where {$_.AllowNewSession}).count
     $HPNumHostsAvailable = (Get-AzWvdSessionHost -HostPoolName $HPName -ResourceGroupName $HPResGroup | where {$_.Status -eq "Available"}).count
     $HPNumHostsAvailableAndAllowingSessions = (Get-AzWvdSessionHost -HostPoolName $HPName -ResourceGroupName $HPResGroup | where {$_.Status -eq "Available" -and $_.AllowNewSession}).count
+
+    # Scaling plan assignment for this host pool. The enabled flag lives on the scaling plan's
+    # reference to each host pool, not on the plan itself, so one plan can be enabled for one pool
+    # and disabled for another. ScalingPlanState is one of:
+    #   Enabled / Disabled - a plan is assigned and that is its state for THIS host pool
+    #   None               - no scaling plan is assigned to this host pool
+    #   Unknown            - the lookup failed; the scaling plan alerts ignore these runs
+    $HPScalingPlanName = ''
+    $HPScalingPlanState = 'None'
+    Try {
+        $HPScalingPlans = Get-AzWvdScalingPlan -ResourceGroupName $HPResGroup -HostPoolName $HPName -SubscriptionId $AVDSubscription -ErrorAction Stop
+        Foreach($HPScalingPlan in $HPScalingPlans){
+            # ARM path casing (and occasionally trailing whitespace) can differ from the host pool ID; -eq is case-insensitive
+            $HPScalingPlanRef = $HPScalingPlan.HostPoolReference | Where-Object { "$($_.HostPoolArmPath)".Trim() -eq $HP_ResID } | Select-Object -First 1
+            If($HPScalingPlanRef){
+                $HPScalingPlanName = $HPScalingPlan.Name
+                $HPScalingPlanState = If($HPScalingPlanRef.ScalingPlanEnabled){'Enabled'} Else {'Disabled'}
+            }
+        }
+    }
+    Catch {
+        $HPScalingPlanName = ''
+        $HPScalingPlanState = 'Unknown'
+    }
     #Changing how we calculate available sessions to be based on number of hosts that are available and allowing sessions, instead of total number of hosts
 
 # Max allowed Sessions - Based on Total given unavailable may be on scaling plan
@@ -68,7 +94,7 @@ Foreach($AVDHostPool in $AVDHostPools){
 		$HPLoadPercent = ($HPUsrSession/($HPMaxSessionLimit * $HPNumHostsAvailableAndAllowingSessions))*100
 	}
 	Else {$HPLoadPercent = 0}
-    $Output += $HPName + "|" + $HPResGroup + "|" + $HPType + "|" + $HPMaxSessionLimit  + "|" + $HPNumSessionHosts + "|" + $HPUsrSession  + "|" + $HPUsrDisonnected  + "|" + $HPUsrActive + "|" + $HPSessionsAvail + "|" + $HPLoadPercent + "|" + $HPNumPerUnhlthy + "|" + $HPPerHostUnhlthy  + "|" + $HP_ResID
+    $Output += $HPName + "|" + $HPResGroup + "|" + $HPType + "|" + $HPMaxSessionLimit  + "|" + $HPNumSessionHosts + "|" + $HPUsrSession  + "|" + $HPUsrDisonnected  + "|" + $HPUsrActive + "|" + $HPSessionsAvail + "|" + $HPLoadPercent + "|" + $HPNumPerUnhlthy + "|" + $HPPerHostUnhlthy  + "|" + $HP_ResID + "|" + $HPScalingPlanName + "|" + $HPScalingPlanState
 }
 } # end foreach subscription
 

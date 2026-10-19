@@ -7,12 +7,12 @@ param virtualHubName string
 @description('Required. The name of the virtual WAN to create.')
 param virtualWANName string
 
-resource virtualWan 'Microsoft.Network/virtualWans@2021-05-01' = {
+resource virtualWan 'Microsoft.Network/virtualWans@2025-09-01' = {
   name: virtualWANName
   location: location
 }
 
-resource virtualHub 'Microsoft.Network/virtualHubs@2022-01-01' = {
+resource virtualHub 'Microsoft.Network/virtualHubs@2025-09-01' = {
   name: virtualHubName
   location: location
   properties: {

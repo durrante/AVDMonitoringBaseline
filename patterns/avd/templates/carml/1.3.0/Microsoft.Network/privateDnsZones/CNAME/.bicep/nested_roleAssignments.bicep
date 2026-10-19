@@ -78,7 +78,7 @@ var builtInRoleNames = {
   'Windows Admin Center Administrator Login': subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a6333a3e-0164-44c3-b281-7a577aff287f')
 }
 
-resource CNAME 'Microsoft.Network/privateDnsZones/CNAME@2018-09-01' existing = {
+resource CNAME 'Microsoft.Network/privateDnsZones/CNAME@2024-06-01' existing = {
   name: '${split(resourceId, '/')[8]}/${split(resourceId, '/')[10]}'
 }
 

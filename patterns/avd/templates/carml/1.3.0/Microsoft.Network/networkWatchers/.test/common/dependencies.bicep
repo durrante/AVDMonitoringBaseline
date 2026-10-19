@@ -22,7 +22,7 @@ param password string = newGuid()
 
 var addressPrefix = '10.0.0.0/16'
 
-resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-01-01' = {
+resource virtualNetwork 'Microsoft.Network/virtualNetworks@2025-09-01' = {
     name: virtualNetworkName
     location: location
     properties: {
@@ -42,22 +42,22 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-01-01' = {
     }
 }
 
-resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
+resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' = {
     name: managedIdentityName
     location: location
 }
 
-resource firstNetworkSecurityGroup 'Microsoft.Network/networkSecurityGroups@2022-05-01' = {
+resource firstNetworkSecurityGroup 'Microsoft.Network/networkSecurityGroups@2025-09-01' = {
     name: firstNetworkSecurityGroupName
     location: location
 }
 
-resource secondNetworkSecurityGroup 'Microsoft.Network/networkSecurityGroups@2022-05-01' = {
+resource secondNetworkSecurityGroup 'Microsoft.Network/networkSecurityGroups@2025-09-01' = {
     name: secondNetworkSecurityGroupName
     location: location
 }
 
-resource networkInterface 'Microsoft.Network/networkInterfaces@2022-05-01' = {
+resource networkInterface 'Microsoft.Network/networkInterfaces@2025-09-01' = {
     name: '${virtualMachineName}-nic'
     location: location
     properties: {
@@ -74,7 +74,7 @@ resource networkInterface 'Microsoft.Network/networkInterfaces@2022-05-01' = {
     }
 }
 
-resource virtualMachine 'Microsoft.Compute/virtualMachines@2022-08-01' = {
+resource virtualMachine 'Microsoft.Compute/virtualMachines@2026-04-01' = {
     name: virtualMachineName
     location: location
     properties: {
@@ -115,7 +115,7 @@ resource virtualMachine 'Microsoft.Compute/virtualMachines@2022-08-01' = {
     }
 }
 
-resource extension 'Microsoft.Compute/virtualMachines/extensions@2021-07-01' = {
+resource extension 'Microsoft.Compute/virtualMachines/extensions@2026-04-01' = {
     name: 'NetworkWatcherAgent'
     parent: virtualMachine
     location: location

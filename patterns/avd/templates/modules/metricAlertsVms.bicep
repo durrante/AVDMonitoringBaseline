@@ -11,7 +11,7 @@ param VMResourceGroupId string
 // must match the VMs' region, which may differ from the deployment region. The VM resource
 // group's location is used as that region: multi-resource metric alerts only support a single
 // region, so the session host VMs are assumed to be in the same region as their resource group.
-resource vmResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' existing = {
+resource vmResourceGroup 'Microsoft.Resources/resourceGroups@2025-04-01' existing = {
   name: split(VMResourceGroupId, '/')[4]
   scope: subscription(split(VMResourceGroupId, '/')[2])
 }

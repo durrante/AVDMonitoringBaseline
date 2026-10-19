@@ -19,7 +19,7 @@ param secondaryVirtualNetworkName string
 @description('Required. The name of the secondary Virtual Network Gateway to create.')
 param secondaryVirtualNetworkGatewayName string
 
-resource primaryVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-01-01' = {
+resource primaryVirtualNetwork 'Microsoft.Network/virtualNetworks@2025-09-01' = {
     name: primaryVirtualNetworkName
     location: location
     properties: {
@@ -39,12 +39,12 @@ resource primaryVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-01-01' = 
     }
 }
 
-resource primaryPublicIP 'Microsoft.Network/publicIPAddresses@2022-01-01' = {
+resource primaryPublicIP 'Microsoft.Network/publicIPAddresses@2025-09-01' = {
     name: primaryPublicIPName
     location: location
 }
 
-resource primaryVNETGateway 'Microsoft.Network/virtualNetworkGateways@2021-08-01' = {
+resource primaryVNETGateway 'Microsoft.Network/virtualNetworkGateways@2025-09-01' = {
     name: primaryVirtualNetworkGatewayName
     location: location
     properties: {
@@ -72,7 +72,7 @@ resource primaryVNETGateway 'Microsoft.Network/virtualNetworkGateways@2021-08-01
     }
 }
 
-resource secondaryVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-01-01' = {
+resource secondaryVirtualNetwork 'Microsoft.Network/virtualNetworks@2025-09-01' = {
     name: secondaryVirtualNetworkName
     location: location
     properties: {
@@ -92,12 +92,12 @@ resource secondaryVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-01-01' 
     }
 }
 
-resource secondaryPublicIP 'Microsoft.Network/publicIPAddresses@2022-01-01' = {
+resource secondaryPublicIP 'Microsoft.Network/publicIPAddresses@2025-09-01' = {
     name: secondaryPublicIPName
     location: location
 }
 
-resource secondaryVNETGateway 'Microsoft.Network/virtualNetworkGateways@2021-08-01' = {
+resource secondaryVNETGateway 'Microsoft.Network/virtualNetworkGateways@2025-09-01' = {
     name: secondaryVirtualNetworkGatewayName
     location: location
     properties: {
