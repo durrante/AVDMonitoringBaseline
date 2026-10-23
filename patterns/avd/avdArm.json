@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "13950196782900509807"
+      "templateHash": "6918965270761207348"
     }
   },
   "parameters": {
@@ -176,7 +176,7 @@
       }
     ],
     "ActionGroupName": "[format('ag-avdmetrics-{0}-{1}-{2}', parameters('Environment'), parameters('Location'), uniqueString(subscription().displayName))]",
-    "AlertDescriptionHeader": "[if(empty(parameters('CustomerName')), 'Automated AVD Alert Deployment Solution (v2.6.0)\n', format('Customer: {0}\nAutomated AVD Alert Deployment Solution (v2.6.0)\n', parameters('CustomerName')))]",
+    "AlertDescriptionHeader": "[if(empty(parameters('CustomerName')), 'Automated AVD Alert Deployment Solution (v2.6.1)\n', format('Customer: {0}\nAutomated AVD Alert Deployment Solution (v2.6.1)\n', parameters('CustomerName')))]",
     "AutomationAccountName": "[format('aa-avdmetrics-{0}-{1}-{2}', parameters('Environment'), parameters('Location'), parameters('AlertNamePrefix'))]",
     "CloudEnvironment": "[environment().name]",
     "ResourceGroupCreate": "[if(equals(parameters('ResourceGroupStatus'), 'New'), true(), false())]",
@@ -215,46 +215,12 @@
         "criteria": {
           "allOf": [
             {
-              "query": "          AzureDiagnostics\n          | where Category has \"JobStreams\" and StreamType_s == \"Output\" and RunbookName_s == \"AvdHostPoolLogData\"\n          | sort by TimeGenerated\n          | where TimeGenerated > now() - 5m\n          | extend HostPoolName=tostring(split(ResultDescription, '|')[0])\n          | extend ResourceGroup=tostring(split(ResultDescription, '|')[1])\n          | extend Type=tostring(split(ResultDescription, '|')[2])\n          | extend MaxSessionLimit=toint(split(ResultDescription, '|')[3])\n          | extend NumberSessionHosts=toint(split(ResultDescription, '|')[4])\n          | extend UserSessionsTotal=toint(split(ResultDescription, '|')[5])\n          | extend UserSessionsDisconnected=toint(split(ResultDescription, '|')[6])\n          | extend UserSessionsActive=toint(split(ResultDescription, '|')[7])\n          | extend UserSessionsAvailable=toint(split(ResultDescription, '|')[8])\n          | extend HostPoolPercentLoad=toreal(split(ResultDescription, '|')[9])\n          | extend HPResourceId=tostring(split(ResultDescription, '|')[12])\n          | extend ResourceId=tostring(HPResourceId)\n          | where HostPoolPercentLoad >= 85 and HostPoolPercentLoad < 95\n          | where HostPoolName =~ 'xHostPoolNamex'\n          ",
-              "timeAggregation": "Count",
+              "query": "          AzureDiagnostics\n          | where Category has \"JobStreams\" and StreamType_s == \"Output\" and RunbookName_s == \"AvdHostPoolLogData\"\n          | where TimeGenerated > ago(20m)\n          | extend HostPoolName=tostring(split(ResultDescription, '|')[0])\n          | extend ResourceGroup=tostring(split(ResultDescription, '|')[1])\n          | extend Type=tostring(split(ResultDescription, '|')[2])\n          | extend MaxSessionLimit=toint(split(ResultDescription, '|')[3])\n          | extend NumberSessionHosts=toint(split(ResultDescription, '|')[4])\n          | extend UserSessionsTotal=toint(split(ResultDescription, '|')[5])\n          | extend UserSessionsDisconnected=toint(split(ResultDescription, '|')[6])\n          | extend UserSessionsActive=toint(split(ResultDescription, '|')[7])\n          | extend UserSessionsAvailable=toint(split(ResultDescription, '|')[8])\n          | extend HostPoolPercentLoad=toreal(split(ResultDescription, '|')[9])\n          | extend HPResourceId=tostring(split(ResultDescription, '|')[12])\n          | extend ResourceId=tostring(HPResourceId)\n          | where HostPoolName =~ 'xHostPoolNamex'\n          // Latest runbook run only. The runbook runs every 15 minutes, so a 5 minute look-back missed it on 2 of every 3 checks\n          | summarize arg_max(TimeGenerated, *) by HostPoolName\n          | where HostPoolPercentLoad >= 85 and HostPoolPercentLoad < 95\n          ",
+              "timeAggregation": "Maximum",
+              "metricMeasureColumn": "HostPoolPercentLoad",
               "dimensions": [
                 {
                   "name": "HostPoolName",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "UserSessionsTotal",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "UserSessionsDisconnected",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "UserSessionsActive",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "UserSessionsAvailable",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "HostPoolPercentLoad",
                   "operator": "Include",
                   "values": [
                     "*"
@@ -263,7 +229,7 @@
               ],
               "resourceIdColumn": "ResourceId",
               "operator": "GreaterThanOrEqual",
-              "threshold": 1,
+              "threshold": 85,
               "failingPeriods": {
                 "numberOfEvaluationPeriods": 1,
                 "minFailingPeriodsToAlert": 1
@@ -283,46 +249,12 @@
         "criteria": {
           "allOf": [
             {
-              "query": "          AzureDiagnostics\n          | where Category has \"JobStreams\" and StreamType_s == \"Output\" and RunbookName_s == \"AvdHostPoolLogData\"\n          | sort by TimeGenerated\n          | where TimeGenerated > now() - 5m\n          | extend HostPoolName=tostring(split(ResultDescription, '|')[0])\n          | extend ResourceGroup=tostring(split(ResultDescription, '|')[1])\n          | extend Type=tostring(split(ResultDescription, '|')[2])\n          | extend MaxSessionLimit=toint(split(ResultDescription, '|')[3])\n          | extend NumberSessionHosts=toint(split(ResultDescription, '|')[4])\n          | extend UserSessionsTotal=toint(split(ResultDescription, '|')[5])\n          | extend UserSessionsDisconnected=toint(split(ResultDescription, '|')[6])\n          | extend UserSessionsActive=toint(split(ResultDescription, '|')[7])\n          | extend UserSessionsAvailable=toint(split(ResultDescription, '|')[8])\n          | extend HostPoolPercentLoad=toreal(split(ResultDescription, '|')[9])\n          | extend HPResourceId=tostring(split(ResultDescription, '|')[12])\n          | extend ResourceId=tostring(HPResourceId)\n          | where HostPoolPercentLoad >= 50 and HostPoolPercentLoad < 85\n          | where HostPoolName =~ 'xHostPoolNamex'\n          ",
-              "timeAggregation": "Count",
+              "query": "          AzureDiagnostics\n          | where Category has \"JobStreams\" and StreamType_s == \"Output\" and RunbookName_s == \"AvdHostPoolLogData\"\n          | where TimeGenerated > ago(20m)\n          | extend HostPoolName=tostring(split(ResultDescription, '|')[0])\n          | extend ResourceGroup=tostring(split(ResultDescription, '|')[1])\n          | extend Type=tostring(split(ResultDescription, '|')[2])\n          | extend MaxSessionLimit=toint(split(ResultDescription, '|')[3])\n          | extend NumberSessionHosts=toint(split(ResultDescription, '|')[4])\n          | extend UserSessionsTotal=toint(split(ResultDescription, '|')[5])\n          | extend UserSessionsDisconnected=toint(split(ResultDescription, '|')[6])\n          | extend UserSessionsActive=toint(split(ResultDescription, '|')[7])\n          | extend UserSessionsAvailable=toint(split(ResultDescription, '|')[8])\n          | extend HostPoolPercentLoad=toreal(split(ResultDescription, '|')[9])\n          | extend HPResourceId=tostring(split(ResultDescription, '|')[12])\n          | extend ResourceId=tostring(HPResourceId)\n          | where HostPoolName =~ 'xHostPoolNamex'\n          // Latest runbook run only. The runbook runs every 15 minutes, so a 5 minute look-back missed it on 2 of every 3 checks\n          | summarize arg_max(TimeGenerated, *) by HostPoolName\n          | where HostPoolPercentLoad >= 50 and HostPoolPercentLoad < 85\n          ",
+              "timeAggregation": "Maximum",
+              "metricMeasureColumn": "HostPoolPercentLoad",
               "dimensions": [
                 {
                   "name": "HostPoolName",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "UserSessionsTotal",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "UserSessionsDisconnected",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "UserSessionsActive",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "UserSessionsAvailable",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "HostPoolPercentLoad",
                   "operator": "Include",
                   "values": [
                     "*"
@@ -331,7 +263,7 @@
               ],
               "resourceIdColumn": "ResourceId",
               "operator": "GreaterThanOrEqual",
-              "threshold": 1,
+              "threshold": 50,
               "failingPeriods": {
                 "numberOfEvaluationPeriods": 1,
                 "minFailingPeriodsToAlert": 1
@@ -351,46 +283,12 @@
         "criteria": {
           "allOf": [
             {
-              "query": "          AzureDiagnostics\n          | where Category has \"JobStreams\" and StreamType_s == \"Output\" and RunbookName_s == \"AvdHostPoolLogData\"\n          | sort by TimeGenerated\n          | where TimeGenerated > now() - 5m\n          | extend HostPoolName=tostring(split(ResultDescription, '|')[0])\n          | extend ResourceGroup=tostring(split(ResultDescription, '|')[1])\n          | extend Type=tostring(split(ResultDescription, '|')[2])\n          | extend MaxSessionLimit=toint(split(ResultDescription, '|')[3])\n          | extend NumberSessionHosts=toint(split(ResultDescription, '|')[4])\n          | extend UserSessionsTotal=toint(split(ResultDescription, '|')[5])\n          | extend UserSessionsDisconnected=toint(split(ResultDescription, '|')[6])\n          | extend UserSessionsActive=toint(split(ResultDescription, '|')[7])\n          | extend UserSessionsAvailable=toint(split(ResultDescription, '|')[8])\n          | extend HostPoolPercentLoad=toreal(split(ResultDescription, '|')[9])\n          | extend HPResourceId=tostring(split(ResultDescription, '|')[12])\n          | extend ResourceId=tostring(HPResourceId)\n          | where HostPoolPercentLoad >= 95\n          | where HostPoolName =~ 'xHostPoolNamex'\n          ",
-              "timeAggregation": "Count",
+              "query": "          AzureDiagnostics\n          | where Category has \"JobStreams\" and StreamType_s == \"Output\" and RunbookName_s == \"AvdHostPoolLogData\"\n          | where TimeGenerated > ago(20m)\n          | extend HostPoolName=tostring(split(ResultDescription, '|')[0])\n          | extend ResourceGroup=tostring(split(ResultDescription, '|')[1])\n          | extend Type=tostring(split(ResultDescription, '|')[2])\n          | extend MaxSessionLimit=toint(split(ResultDescription, '|')[3])\n          | extend NumberSessionHosts=toint(split(ResultDescription, '|')[4])\n          | extend UserSessionsTotal=toint(split(ResultDescription, '|')[5])\n          | extend UserSessionsDisconnected=toint(split(ResultDescription, '|')[6])\n          | extend UserSessionsActive=toint(split(ResultDescription, '|')[7])\n          | extend UserSessionsAvailable=toint(split(ResultDescription, '|')[8])\n          | extend HostPoolPercentLoad=toreal(split(ResultDescription, '|')[9])\n          | extend HPResourceId=tostring(split(ResultDescription, '|')[12])\n          | extend ResourceId=tostring(HPResourceId)\n          | where HostPoolName =~ 'xHostPoolNamex'\n          // Latest runbook run only. The runbook runs every 15 minutes, so a 5 minute look-back missed it on 2 of every 3 checks\n          | summarize arg_max(TimeGenerated, *) by HostPoolName\n          | where HostPoolPercentLoad >= 95\n          ",
+              "timeAggregation": "Maximum",
+              "metricMeasureColumn": "HostPoolPercentLoad",
               "dimensions": [
                 {
                   "name": "HostPoolName",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "UserSessionsTotal",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "UserSessionsDisconnected",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "UserSessionsActive",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "UserSessionsAvailable",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
-                },
-                {
-                  "name": "HostPoolPercentLoad",
                   "operator": "Include",
                   "values": [
                     "*"
@@ -399,7 +297,7 @@
               ],
               "resourceIdColumn": "ResourceId",
               "operator": "GreaterThanOrEqual",
-              "threshold": 1,
+              "threshold": 95,
               "failingPeriods": {
                 "numberOfEvaluationPeriods": 1,
                 "minFailingPeriodsToAlert": 1
@@ -537,7 +435,8 @@
           "allOf": [
             {
               "query": "          Perf\n          | where TimeGenerated > ago(15m)\n          | where ObjectName == \"LogicalDisk\" and CounterName == \"% Free Space\"\n          | where InstanceName !contains \"D:\"\n          | where InstanceName  !contains \"_Total\"| where CounterValue <= 10.00\n          | parse _ResourceId with \"/subscriptions/\" subscription \"/resourcegroups/\" ResourceGroup \"/providers/microsoft.compute/virtualmachines/\" ComputerName\n          | summarize arg_max(TimeGenerated, *) by ComputerName\n          | extend ComputerName=tolower(ComputerName)\n          | project ComputerName, CounterValue, subscription, ResourceGroup, TimeGenerated\n          | join kind = leftouter\n          (\n              WVDAgentHealthStatus\n              | where TimeGenerated > ago(15m)\n              | where _ResourceId contains \"xHostPoolNamex\"\n              | parse _ResourceId with \"/subscriptions/\" subscriptionAgentHealth \"/resourcegroups/\" ResourceGroupAgentHealth \"/providers/microsoft.desktopvirtualization/hostpools/\" HostPool\n              | parse SessionHostResourceId with \"/subscriptions/\" VMsubscription \"/resourceGroups/\" VMresourceGroup \"/providers/Microsoft.Compute/virtualMachines/\" ComputerName\n              | extend ComputerName=tolower(ComputerName)\n              | summarize arg_max(TimeGenerated,*) by ComputerName\n              | project VMresourceGroup, ComputerName, HostPool, _ResourceId\n              ) on ComputerName\n          | where ComputerName1 contains ComputerName\n          ",
-              "timeAggregation": "Count",
+              "timeAggregation": "Minimum",
+              "metricMeasureColumn": "CounterValue",
               "dimensions": [
                 {
                   "name": "ComputerName",
@@ -559,18 +458,11 @@
                   "values": [
                     "*"
                   ]
-                },
-                {
-                  "name": "CounterValue",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
                 }
               ],
               "resourceIdColumn": "_ResourceId",
-              "operator": "GreaterThanOrEqual",
-              "threshold": 1,
+              "operator": "LessThanOrEqual",
+              "threshold": 10,
               "failingPeriods": {
                 "numberOfEvaluationPeriods": 1,
                 "minFailingPeriodsToAlert": 1
@@ -591,7 +483,8 @@
           "allOf": [
             {
               "query": "          Perf\n          | where TimeGenerated > ago(15m)\n          | where ObjectName == \"LogicalDisk\" and CounterName == \"% Free Space\"\n          | where InstanceName !contains \"D:\"\n          | where InstanceName  !contains \"_Total\"| where CounterValue <= 5.00\n          | parse _ResourceId with \"/subscriptions/\" subscription \"/resourcegroups/\" ResourceGroup \"/providers/microsoft.compute/virtualmachines/\" ComputerName\n          | summarize arg_max(TimeGenerated, *) by ComputerName\n          | extend ComputerName=tolower(ComputerName)\n          | project ComputerName, CounterValue, subscription, ResourceGroup, TimeGenerated\n          | join kind = leftouter\n          (\n              WVDAgentHealthStatus\n              | where TimeGenerated > ago(15m)\n              | where _ResourceId contains \"xHostPoolNamex\"\n              | parse _ResourceId with \"/subscriptions/\" subscriptionAgentHealth \"/resourcegroups/\" ResourceGroupAgentHealth \"/providers/microsoft.desktopvirtualization/hostpools/\" HostPool\n              | parse SessionHostResourceId with \"/subscriptions/\" VMsubscription \"/resourceGroups/\" VMresourceGroup \"/providers/Microsoft.Compute/virtualMachines/\" ComputerName\n              | extend ComputerName=tolower(ComputerName)\n              | summarize arg_max(TimeGenerated,*) by ComputerName\n              | project VMresourceGroup, ComputerName, HostPool, _ResourceId\n              ) on ComputerName\n          | where ComputerName1 contains ComputerName\n          ",
-              "timeAggregation": "Count",
+              "timeAggregation": "Minimum",
+              "metricMeasureColumn": "CounterValue",
               "dimensions": [
                 {
                   "name": "ComputerName",
@@ -613,18 +506,11 @@
                   "values": [
                     "*"
                   ]
-                },
-                {
-                  "name": "CounterValue",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
                 }
               ],
               "resourceIdColumn": "_ResourceId",
-              "operator": "GreaterThanOrEqual",
-              "threshold": 1,
+              "operator": "LessThanOrEqual",
+              "threshold": 5,
               "failingPeriods": {
                 "numberOfEvaluationPeriods": 1,
                 "minFailingPeriodsToAlert": 1
@@ -1071,7 +957,8 @@
           "allOf": [
             {
               "query": "          Perf\n          | where TimeGenerated > ago(15m)\n          | where ObjectName == \"Memory\" and CounterName == \"Available MBytes\"\n          | parse _ResourceId with \"/subscriptions/\" subscription \"/resourcegroups/\" ResourceGroup \"/providers/microsoft.compute/virtualmachines/\" ComputerName\n          | extend ComputerName=tolower(ComputerName)\n          | summarize AvailableMB = round(avg(CounterValue), 0), FirstSample = min(TimeGenerated), TimeGenerated = max(TimeGenerated) by ComputerName, subscription, ResourceGroup\n          | where FirstSample <= ago(10m)\n          | where AvailableMB <= 2048\n          | join kind = inner\n              (\n                WVDAgentHealthStatus\n                | where _ResourceId contains \"xHostPoolNamex\"\n                | parse _ResourceId with \"/subscriptions/\" subscriptionAgentHealth \"/resourcegroups/\" ResourceGroupAgentHealth \"/providers/microsoft.desktopvirtualization/hostpools/\" HostPool\n                | parse SessionHostResourceId with \"/subscriptions/\" VMsubscription \"/resourceGroups/\" VMresourceGroup \"/providers/Microsoft.Compute/virtualMachines/\" ComputerName\n                | extend ComputerName=tolower(ComputerName)\n                | summarize arg_max(TimeGenerated,*) by ComputerName\n                | project VMresourceGroup, ComputerName, HostPool\n              ) on ComputerName\n          | project TimeGenerated, ComputerName, HostPool, VMresourceGroup, AvailableMB\n          ",
-              "timeAggregation": "Count",
+              "timeAggregation": "Minimum",
+              "metricMeasureColumn": "AvailableMB",
               "dimensions": [
                 {
                   "name": "ComputerName",
@@ -1093,17 +980,10 @@
                   "values": [
                     "*"
                   ]
-                },
-                {
-                  "name": "AvailableMB",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
                 }
               ],
-              "operator": "GreaterThanOrEqual",
-              "threshold": 1,
+              "operator": "LessThanOrEqual",
+              "threshold": 2048,
               "failingPeriods": {
                 "numberOfEvaluationPeriods": 1,
                 "minFailingPeriodsToAlert": 1
@@ -1123,7 +1003,8 @@
           "allOf": [
             {
               "query": "          Perf\n          | where TimeGenerated > ago(15m)\n          | where ObjectName == \"Memory\" and CounterName == \"Available MBytes\"\n          | parse _ResourceId with \"/subscriptions/\" subscription \"/resourcegroups/\" ResourceGroup \"/providers/microsoft.compute/virtualmachines/\" ComputerName\n          | extend ComputerName=tolower(ComputerName)\n          | summarize AvailableMB = round(avg(CounterValue), 0), FirstSample = min(TimeGenerated), TimeGenerated = max(TimeGenerated) by ComputerName, subscription, ResourceGroup\n          | where FirstSample <= ago(10m)\n          | where AvailableMB <= 1024\n          | join kind = inner\n              (\n                WVDAgentHealthStatus\n                | where _ResourceId contains \"xHostPoolNamex\"\n                | parse _ResourceId with \"/subscriptions/\" subscriptionAgentHealth \"/resourcegroups/\" ResourceGroupAgentHealth \"/providers/microsoft.desktopvirtualization/hostpools/\" HostPool\n                | parse SessionHostResourceId with \"/subscriptions/\" VMsubscription \"/resourceGroups/\" VMresourceGroup \"/providers/Microsoft.Compute/virtualMachines/\" ComputerName\n                | extend ComputerName=tolower(ComputerName)\n                | summarize arg_max(TimeGenerated,*) by ComputerName\n                | project VMresourceGroup, ComputerName, HostPool\n              ) on ComputerName\n          | project TimeGenerated, ComputerName, HostPool, VMresourceGroup, AvailableMB\n          ",
-              "timeAggregation": "Count",
+              "timeAggregation": "Minimum",
+              "metricMeasureColumn": "AvailableMB",
               "dimensions": [
                 {
                   "name": "ComputerName",
@@ -1145,17 +1026,10 @@
                   "values": [
                     "*"
                   ]
-                },
-                {
-                  "name": "AvailableMB",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
                 }
               ],
-              "operator": "GreaterThanOrEqual",
-              "threshold": 1,
+              "operator": "LessThanOrEqual",
+              "threshold": 1024,
               "failingPeriods": {
                 "numberOfEvaluationPeriods": 1,
                 "minFailingPeriodsToAlert": 1
@@ -1609,13 +1483,6 @@
                   "values": [
                     "*"
                   ]
-                },
-                {
-                  "name": "LastErrorCode",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
                 }
               ],
               "operator": "GreaterThanOrEqual",
@@ -1673,7 +1540,8 @@
           "allOf": [
             {
               "query": "          AzureDiagnostics\n          | where Category has \"JobStreams\" and StreamType_s == \"Output\" and RunbookName_s == \"AvdStorageLogData\"\n          | where split(ResultDescription, ',')[1] <> \"\"\n          //  StorageType / Subscription / RG / StorAcct / Share / Quota / GB Used / %Available\n          | extend StorageType=split(ResultDescription, ',')[0]\n          | extend Subscription=split(ResultDescription, ',')[1]\n          | extend ResourceGroup=split(ResultDescription, ',')[2]\n          | extend StorageAccount=tostring(split(ResultDescription, ',')[3])\n          | extend Share=tostring(split(ResultDescription, ',')[4])\n          | extend GBShareQuota=split(ResultDescription, ',')[5]\n          | extend GBUsed=split(ResultDescription, ',')[6]\n          | extend PercentAvailable=round(toreal(split(ResultDescription, ',')[7]))\n          | extend ResourceId=tostring(split(ResultDescription, ',')[8])\n          | summarize arg_max(TimeGenerated, *) by Share\n          | where PercentAvailable <= 15.00\n          | project TimeGenerated,ResourceId, StorageAccount, Share, PercentAvailable\n          ",
-              "timeAggregation": "Count",
+              "timeAggregation": "Minimum",
+              "metricMeasureColumn": "PercentAvailable",
               "dimensions": [
                 {
                   "name": "StorageAccount",
@@ -1688,18 +1556,11 @@
                   "values": [
                     "*"
                   ]
-                },
-                {
-                  "name": "PercentAvailable",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
                 }
               ],
               "resourceIdColumn": "ResourceId",
-              "operator": "GreaterThanOrEqual",
-              "threshold": 1,
+              "operator": "LessThanOrEqual",
+              "threshold": 15,
               "failingPeriods": {
                 "numberOfEvaluationPeriods": 1,
                 "minFailingPeriodsToAlert": 1
@@ -1720,7 +1581,8 @@
           "allOf": [
             {
               "query": "          AzureDiagnostics\n          | where Category has \"JobStreams\" and StreamType_s == \"Output\" and RunbookName_s == \"AvdStorageLogData\"\n          | where split(ResultDescription, ',')[1] <> \"\"\n          //  StorageType / Subscription / RG / StorAcct / Share / Quota / GB Used / %Available\n          | extend StorageType=split(ResultDescription, ',')[0]\n          | extend Subscription=split(ResultDescription, ',')[1]\n          | extend ResourceGroup=split(ResultDescription, ',')[2]\n          | extend StorageAccount=tostring(split(ResultDescription, ',')[3])\n          | extend Share=tostring(split(ResultDescription, ',')[4])\n          | extend GBShareQuota=split(ResultDescription, ',')[5]\n          | extend GBUsed=split(ResultDescription, ',')[6]\n          | extend PercentAvailable=round(toreal(split(ResultDescription, ',')[7]))\n          | extend ResourceId=tostring(split(ResultDescription, ',')[8])\n          | summarize arg_max(TimeGenerated, *) by Share\n          | where PercentAvailable <= 5.00\n          | project TimeGenerated,ResourceId, StorageAccount, Share, PercentAvailable\n          ",
-              "timeAggregation": "Count",
+              "timeAggregation": "Minimum",
+              "metricMeasureColumn": "PercentAvailable",
               "dimensions": [
                 {
                   "name": "StorageAccount",
@@ -1735,18 +1597,11 @@
                   "values": [
                     "*"
                   ]
-                },
-                {
-                  "name": "PercentAvailable",
-                  "operator": "Include",
-                  "values": [
-                    "*"
-                  ]
                 }
               ],
               "resourceIdColumn": "ResourceId",
-              "operator": "GreaterThanOrEqual",
-              "threshold": 1,
+              "operator": "LessThanOrEqual",
+              "threshold": 5,
               "failingPeriods": {
                 "numberOfEvaluationPeriods": 1,
                 "minFailingPeriodsToAlert": 1
@@ -9209,7 +9064,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.47.16.16243",
-              "templateHash": "7306663121221911099"
+              "templateHash": "15415240877522189906"
             }
           },
           "parameters": {
@@ -13179,6 +13034,7 @@
                   "evaluationFrequency": {
                     "value": "[parameters('LogAlertsStorage')[range(0, length(parameters('LogAlertsStorage')))[copyIndex()]].evaluationFrequency]"
                   },
+                  "suppressForMinutes": "[if(and(not(parameters('AutoResolveAlert')), contains(createArray('PT1M', 'PT5M', 'PT10M', 'PT15M', 'PT30M', 'PT45M'), parameters('LogAlertsStorage')[range(0, length(parameters('LogAlertsStorage')))[copyIndex()]].evaluationFrequency)), createObject('value', 'PT1H'), createObject('value', ''))]",
                   "severity": {
                     "value": "[parameters('LogAlertsStorage')[range(0, length(parameters('LogAlertsStorage')))[copyIndex()]].severity]"
                   },
@@ -13749,7 +13605,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.47.16.16243",
-                      "templateHash": "13961560447708565983"
+                      "templateHash": "2363867838425464309"
                     }
                   },
                   "parameters": {
@@ -13779,7 +13635,16 @@
                     }
                   },
                   "variables": {
-                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]"
+                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]",
+                    "MuteActionsDuration": "PT1H",
+                    "SubHourlyFrequencies": [
+                      "PT1M",
+                      "PT5M",
+                      "PT10M",
+                      "PT15M",
+                      "PT30M",
+                      "PT45M"
+                    ]
                   },
                   "resources": [
                     {
@@ -13808,17 +13673,11 @@
                           "criterias": {
                             "value": {
                               "allOf": [
-                                {
-                                  "query": "[replace(parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].query, 'xHostPoolNamex', parameters('HostPoolName'))]",
-                                  "timeAggregation": "[parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].timeAggregation]",
-                                  "dimensions": "[parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].dimensions]",
-                                  "operator": "[parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].operator]",
-                                  "threshold": "[parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].threshold]",
-                                  "failingPeriods": "[parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].failingPeriods]"
-                                }
+                                "[union(createObject('query', replace(parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].query, 'xHostPoolNamex', parameters('HostPoolName')), 'timeAggregation', parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].timeAggregation, 'dimensions', parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].dimensions, 'operator', parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].operator, 'threshold', parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].threshold, 'failingPeriods', parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].failingPeriods), if(contains(parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0], 'metricMeasureColumn'), createObject('metricMeasureColumn', parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].metricMeasureColumn), createObject()))]"
                               ]
                             }
                           },
+                          "suppressForMinutes": "[if(and(not(parameters('AutoMitigate')), contains(variables('SubHourlyFrequencies'), parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].evaluationFrequency)), createObject('value', variables('MuteActionsDuration')), createObject('value', ''))]",
                           "scopes": {
                             "value": [
                               "[parameters('LogAnalyticsWorkspaceResourceId')]"
@@ -14432,7 +14291,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.47.16.16243",
-                      "templateHash": "13961560447708565983"
+                      "templateHash": "2363867838425464309"
                     }
                   },
                   "parameters": {
@@ -14462,7 +14321,16 @@
                     }
                   },
                   "variables": {
-                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]"
+                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]",
+                    "MuteActionsDuration": "PT1H",
+                    "SubHourlyFrequencies": [
+                      "PT1M",
+                      "PT5M",
+                      "PT10M",
+                      "PT15M",
+                      "PT30M",
+                      "PT45M"
+                    ]
                   },
                   "resources": [
                     {
@@ -14491,17 +14359,11 @@
                           "criterias": {
                             "value": {
                               "allOf": [
-                                {
-                                  "query": "[replace(parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].query, 'xHostPoolNamex', parameters('HostPoolName'))]",
-                                  "timeAggregation": "[parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].timeAggregation]",
-                                  "dimensions": "[parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].dimensions]",
-                                  "operator": "[parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].operator]",
-                                  "threshold": "[parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].threshold]",
-                                  "failingPeriods": "[parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].failingPeriods]"
-                                }
+                                "[union(createObject('query', replace(parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].query, 'xHostPoolNamex', parameters('HostPoolName')), 'timeAggregation', parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].timeAggregation, 'dimensions', parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].dimensions, 'operator', parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].operator, 'threshold', parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].threshold, 'failingPeriods', parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].failingPeriods), if(contains(parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0], 'metricMeasureColumn'), createObject('metricMeasureColumn', parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].criteria.allOf[0].metricMeasureColumn), createObject()))]"
                               ]
                             }
                           },
+                          "suppressForMinutes": "[if(and(not(parameters('AutoMitigate')), contains(variables('SubHourlyFrequencies'), parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].evaluationFrequency)), createObject('value', variables('MuteActionsDuration')), createObject('value', ''))]",
                           "scopes": {
                             "value": [
                               "[parameters('LogAnalyticsWorkspaceResourceId')]"

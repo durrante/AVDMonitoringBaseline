@@ -2,7 +2,40 @@
 
 This fork of [Azure/azure-monitor-baseline-alerts](https://github.com/Azure/azure-monitor-baseline-alerts) (`patterns/avd`) is maintained independently because upstream development of the AVD pattern has gone stale. This document lists every functional change from the upstream baseline (upstream `main` as of commit `ba0266b3`, template v2.2.1) so users migrating from the original solution can see exactly what differs.
 
-**Current version: v2.6.0** (2026-10-19)
+**Current version: v2.6.1** (2026-10-23)
+
+---
+
+## v2.6.1 (2026-10-23) — this fork
+
+### 1. Repeated alerts for the same problem fixed
+
+**Alerts affected:** Available Memory Less Than 2GB / 1GB, Local Disk Free Space 10 / 5 Percent, Low Space on Azure File Share 15 / 5 Percent Remaining, Host Pool Capacity 50 / 85 / 95 Percent, and Autoscale Failures.
+
+**Problem:** these alerts used a value that changes at every check as an alert dimension: `AvailableMB`, `CounterValue` and `PercentAvailable` (added in v2.4.0 to show the value in the alert), the Capacity alerts' session counts and load percentage (from the original baseline), and Autoscale Failures' `LastErrorCode`. Azure treats every distinct combination of dimension values as a separate alert. So each check **opened a new alert**, and closed the previous one about 15 minutes later, because that exact value never appeared again. On a production deployment, 5 session hosts with sustained memory pressure produced **126 memory alerts in one morning**. The same data with this fix produces **14**: one per spell of low memory.
+
+**Change:** the value is now **measured** rather than used as a dimension. Each alert checks the value column (the lowest available memory, disk or share space, or the highest host pool load) against its threshold, and Azure shows it as the alert's **metric value** in the notification. Dimensions are now stable: host, host pool and resource group, or storage account and share. One problem now raises one alert, which stays open while the problem lasts and resolves when it clears.
+
+**Power-on protection unchanged:** the Available Memory queries still skip any session host without 10 minutes of readings (the v2.3.0 fix for false positives while hosts power on). Only how Azure evaluates the returned rows changed, not which rows are returned. Checked against production data: the affected hosts had 22 to 27 GB free right after power-on and only ran low hours later.
+
+**Removed dimensions:** the Capacity alerts no longer list session counts in the alert details (they are still in the alert's search results link), and Autoscale Failures no longer includes the last error code (query `WVDErrors` by `CorrelationId`, as the alert description says).
+
+### 2. Host Pool Capacity alerts read the latest runbook run
+
+The Capacity alerts checked every 5 minutes but only looked at runbook output from the last 5 minutes. The runbook runs every 15 minutes, so 2 of every 3 checks found nothing, and an open alert could close and reopen repeatedly. The alerts now read the latest runbook run from the last 20 minutes.
+
+### 3. Repeat notifications muted when auto-resolve is off
+
+When **Allow Alerts to Auto-Resolve** is **No**, Azure notifies at every check for as long as the condition holds. Log search alerts that are checked more often than hourly now mute notifications for 1 hour after firing in that mode, so a persistent problem notifies about once an hour instead of every 5 to 15 minutes. Deployments with auto-resolve on (the default) are unaffected: they already notify once per problem.
+
+### 4. Upgrade guide
+
+[Update to a new release](../../docs/Update-to-new-Release.md) now explains how to upgrade and what a redeployment leaves behind, including the pre-v2.3.0 metric memory alerts. If those are not deleted, memory alerts arrive twice and still fire false positives at power-on.
+
+### Upgrade notes
+
+- Redeploy to apply. The affected alert rules are updated in place.
+- Alerts opened by the old rules close on their own at the next few checks after the update. Nothing needs clearing by hand.
 
 ---
 

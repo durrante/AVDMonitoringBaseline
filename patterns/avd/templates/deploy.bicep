@@ -85,7 +85,7 @@ param ANFVolumeResourceIds array = []
 param Tags object = {}
 
 var ActionGroupName = 'ag-avdmetrics-${Environment}-${Location}-${uniqueString(subscription().displayName)}'
-var AlertDescriptionHeader = empty(CustomerName) ? 'Automated AVD Alert Deployment Solution (v2.6.0)\n' : 'Customer: ${CustomerName}\nAutomated AVD Alert Deployment Solution (v2.6.0)\n' // DESCRIPTION HEADER AND VERSION <-----------------------------
+var AlertDescriptionHeader = empty(CustomerName) ? 'Automated AVD Alert Deployment Solution (v2.6.1)\n' : 'Customer: ${CustomerName}\nAutomated AVD Alert Deployment Solution (v2.6.1)\n' // DESCRIPTION HEADER AND VERSION <-----------------------------
 var AutomationAccountName = 'aa-avdmetrics-${Environment}-${Location}-${AlertNamePrefix}'
 var CloudEnvironment = environment().name
 var ResourceGroupCreate = ResourceGroupStatus == 'New' ? true : false
@@ -146,8 +146,7 @@ var LogAlertsHostPool = [
           query: '''
           AzureDiagnostics
           | where Category has "JobStreams" and StreamType_s == "Output" and RunbookName_s == "AvdHostPoolLogData"
-          | sort by TimeGenerated
-          | where TimeGenerated > now() - 5m
+          | where TimeGenerated > ago(20m)
           | extend HostPoolName=tostring(split(ResultDescription, '|')[0])
           | extend ResourceGroup=tostring(split(ResultDescription, '|')[1])
           | extend Type=tostring(split(ResultDescription, '|')[2])
@@ -160,10 +159,14 @@ var LogAlertsHostPool = [
           | extend HostPoolPercentLoad=toreal(split(ResultDescription, '|')[9])
           | extend HPResourceId=tostring(split(ResultDescription, '|')[12])
           | extend ResourceId=tostring(HPResourceId)
-          | where HostPoolPercentLoad >= 85 and HostPoolPercentLoad < 95
           | where HostPoolName =~ 'xHostPoolNamex'
+          // Latest runbook run only. The runbook runs every 15 minutes, so a 5 minute look-back missed it on 2 of every 3 checks
+          | summarize arg_max(TimeGenerated, *) by HostPoolName
+          | where HostPoolPercentLoad >= 85 and HostPoolPercentLoad < 95
           '''
-          timeAggregation: 'Count'
+          // Measure the value instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Maximum'
+          metricMeasureColumn: 'HostPoolPercentLoad'
           dimensions: [
             {
               name: 'HostPoolName'
@@ -172,45 +175,10 @@ var LogAlertsHostPool = [
                 '*'
               ]
             }
-            {
-              name: 'UserSessionsTotal'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
-            {
-              name: 'UserSessionsDisconnected'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
-            {
-              name: 'UserSessionsActive'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
-            {
-              name: 'UserSessionsAvailable'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
-            {
-              name: 'HostPoolPercentLoad'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
           ]
           resourceIdColumn: 'ResourceId'
           operator: 'GreaterThanOrEqual'
-          threshold: 1
+          threshold: 85
           failingPeriods: {
             numberOfEvaluationPeriods: 1
             minFailingPeriodsToAlert: 1
@@ -234,8 +202,7 @@ var LogAlertsHostPool = [
           query: '''
           AzureDiagnostics
           | where Category has "JobStreams" and StreamType_s == "Output" and RunbookName_s == "AvdHostPoolLogData"
-          | sort by TimeGenerated
-          | where TimeGenerated > now() - 5m
+          | where TimeGenerated > ago(20m)
           | extend HostPoolName=tostring(split(ResultDescription, '|')[0])
           | extend ResourceGroup=tostring(split(ResultDescription, '|')[1])
           | extend Type=tostring(split(ResultDescription, '|')[2])
@@ -248,10 +215,14 @@ var LogAlertsHostPool = [
           | extend HostPoolPercentLoad=toreal(split(ResultDescription, '|')[9])
           | extend HPResourceId=tostring(split(ResultDescription, '|')[12])
           | extend ResourceId=tostring(HPResourceId)
-          | where HostPoolPercentLoad >= 50 and HostPoolPercentLoad < 85
           | where HostPoolName =~ 'xHostPoolNamex'
+          // Latest runbook run only. The runbook runs every 15 minutes, so a 5 minute look-back missed it on 2 of every 3 checks
+          | summarize arg_max(TimeGenerated, *) by HostPoolName
+          | where HostPoolPercentLoad >= 50 and HostPoolPercentLoad < 85
           '''
-          timeAggregation: 'Count'
+          // Measure the value instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Maximum'
+          metricMeasureColumn: 'HostPoolPercentLoad'
           dimensions: [
             {
               name: 'HostPoolName'
@@ -260,45 +231,10 @@ var LogAlertsHostPool = [
                 '*'
               ]
             }
-            {
-              name: 'UserSessionsTotal'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
-            {
-              name: 'UserSessionsDisconnected'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
-            {
-              name: 'UserSessionsActive'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
-            {
-              name: 'UserSessionsAvailable'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
-            {
-              name: 'HostPoolPercentLoad'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
           ]
           resourceIdColumn: 'ResourceId'
           operator: 'GreaterThanOrEqual'
-          threshold: 1
+          threshold: 50
           failingPeriods: {
             numberOfEvaluationPeriods: 1
             minFailingPeriodsToAlert: 1
@@ -322,8 +258,7 @@ var LogAlertsHostPool = [
           query: '''
           AzureDiagnostics
           | where Category has "JobStreams" and StreamType_s == "Output" and RunbookName_s == "AvdHostPoolLogData"
-          | sort by TimeGenerated
-          | where TimeGenerated > now() - 5m
+          | where TimeGenerated > ago(20m)
           | extend HostPoolName=tostring(split(ResultDescription, '|')[0])
           | extend ResourceGroup=tostring(split(ResultDescription, '|')[1])
           | extend Type=tostring(split(ResultDescription, '|')[2])
@@ -336,10 +271,14 @@ var LogAlertsHostPool = [
           | extend HostPoolPercentLoad=toreal(split(ResultDescription, '|')[9])
           | extend HPResourceId=tostring(split(ResultDescription, '|')[12])
           | extend ResourceId=tostring(HPResourceId)
-          | where HostPoolPercentLoad >= 95
           | where HostPoolName =~ 'xHostPoolNamex'
+          // Latest runbook run only. The runbook runs every 15 minutes, so a 5 minute look-back missed it on 2 of every 3 checks
+          | summarize arg_max(TimeGenerated, *) by HostPoolName
+          | where HostPoolPercentLoad >= 95
           '''
-          timeAggregation: 'Count'
+          // Measure the value instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Maximum'
+          metricMeasureColumn: 'HostPoolPercentLoad'
           dimensions: [
             {
               name: 'HostPoolName'
@@ -348,45 +287,10 @@ var LogAlertsHostPool = [
                 '*'
               ]
             }
-            {
-              name: 'UserSessionsTotal'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
-            {
-              name: 'UserSessionsDisconnected'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
-            {
-              name: 'UserSessionsActive'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
-            {
-              name: 'UserSessionsAvailable'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
-            {
-              name: 'HostPoolPercentLoad'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
           ]
           resourceIdColumn: 'ResourceId'
           operator: 'GreaterThanOrEqual'
-          threshold: 1
+          threshold: 95
           failingPeriods: {
             numberOfEvaluationPeriods: 1
             minFailingPeriodsToAlert: 1
@@ -546,7 +450,9 @@ var LogAlertsHostPool = [
               ) on ComputerName
           | where ComputerName1 contains ComputerName
           '''
-          timeAggregation: 'Count'
+          // Measure the value instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Minimum'
+          metricMeasureColumn: 'CounterValue'
           dimensions: [
             {
               name: 'ComputerName'
@@ -569,17 +475,10 @@ var LogAlertsHostPool = [
                 '*'
               ]
             }
-            {
-              name: 'CounterValue'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
           ]
           resourceIdColumn: '_ResourceId'
-          operator: 'GreaterThanOrEqual'
-          threshold: 1
+          operator: 'LessThanOrEqual'
+          threshold: 10
           failingPeriods: {
             numberOfEvaluationPeriods: 1
             minFailingPeriodsToAlert: 1
@@ -622,7 +521,9 @@ var LogAlertsHostPool = [
               ) on ComputerName
           | where ComputerName1 contains ComputerName
           '''
-          timeAggregation: 'Count'
+          // Measure the value instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Minimum'
+          metricMeasureColumn: 'CounterValue'
           dimensions: [
             {
               name: 'ComputerName'
@@ -645,17 +546,10 @@ var LogAlertsHostPool = [
                 '*'
               ]
             }
-            {
-              name: 'CounterValue'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
           ]
           resourceIdColumn: '_ResourceId'
-          operator: 'GreaterThanOrEqual'
-          threshold: 1
+          operator: 'LessThanOrEqual'
+          threshold: 5
           failingPeriods: {
             numberOfEvaluationPeriods: 1
             minFailingPeriodsToAlert: 1
@@ -1256,7 +1150,9 @@ var LogAlertsHostPool = [
               ) on ComputerName
           | project TimeGenerated, ComputerName, HostPool, VMresourceGroup, AvailableMB
           '''
-          timeAggregation: 'Count'
+          // Measure the value instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Minimum'
+          metricMeasureColumn: 'AvailableMB'
           dimensions: [
             {
               name: 'ComputerName'
@@ -1279,16 +1175,9 @@ var LogAlertsHostPool = [
                 '*'
               ]
             }
-            {
-              name: 'AvailableMB'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
           ]
-          operator: 'GreaterThanOrEqual'
-          threshold: 1
+          operator: 'LessThanOrEqual'
+          threshold: 2048
           failingPeriods: {
             numberOfEvaluationPeriods: 1
             minFailingPeriodsToAlert: 1
@@ -1328,7 +1217,9 @@ var LogAlertsHostPool = [
               ) on ComputerName
           | project TimeGenerated, ComputerName, HostPool, VMresourceGroup, AvailableMB
           '''
-          timeAggregation: 'Count'
+          // Measure the value instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Minimum'
+          metricMeasureColumn: 'AvailableMB'
           dimensions: [
             {
               name: 'ComputerName'
@@ -1351,16 +1242,9 @@ var LogAlertsHostPool = [
                 '*'
               ]
             }
-            {
-              name: 'AvailableMB'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
           ]
-          operator: 'GreaterThanOrEqual'
-          threshold: 1
+          operator: 'LessThanOrEqual'
+          threshold: 1024
           failingPeriods: {
             numberOfEvaluationPeriods: 1
             minFailingPeriodsToAlert: 1
@@ -1977,13 +1861,6 @@ var LogAlertsHostPool = [
                 '*'
               ]
             }
-            {
-              name: 'LastErrorCode'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
           ]
           operator: 'GreaterThanOrEqual'
           threshold: 1
@@ -2079,7 +1956,9 @@ var LogAlertsStorage = [
           | where PercentAvailable <= 15.00
           | project TimeGenerated,ResourceId, StorageAccount, Share, PercentAvailable
           '''
-          timeAggregation: 'Count'
+          // Measure the value instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Minimum'
+          metricMeasureColumn: 'PercentAvailable'
           dimensions: [
             {
               name: 'StorageAccount'
@@ -2095,17 +1974,10 @@ var LogAlertsStorage = [
                 '*'
               ]
             }
-            {
-              name: 'PercentAvailable'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
           ]
           resourceIdColumn: 'ResourceId'
-          operator: 'GreaterThanOrEqual'
-          threshold: 1
+          operator: 'LessThanOrEqual'
+          threshold: 15
           failingPeriods: {
             numberOfEvaluationPeriods: 1
             minFailingPeriodsToAlert: 1
@@ -2144,7 +2016,9 @@ var LogAlertsStorage = [
           | where PercentAvailable <= 5.00
           | project TimeGenerated,ResourceId, StorageAccount, Share, PercentAvailable
           '''
-          timeAggregation: 'Count'
+          // Measure the value instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Minimum'
+          metricMeasureColumn: 'PercentAvailable'
           dimensions: [
             {
               name: 'StorageAccount'
@@ -2160,17 +2034,10 @@ var LogAlertsStorage = [
                 '*'
               ]
             }
-            {
-              name: 'PercentAvailable'
-              operator: 'Include'
-              values: [
-                '*'
-              ]
-            }
           ]
           resourceIdColumn: 'ResourceId'
-          operator: 'GreaterThanOrEqual'
-          threshold: 1
+          operator: 'LessThanOrEqual'
+          threshold: 5
           failingPeriods: {
             numberOfEvaluationPeriods: 1
             minFailingPeriodsToAlert: 1
