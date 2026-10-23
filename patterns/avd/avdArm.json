@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "6918965270761207348"
+      "templateHash": "7151279815471154684"
     }
   },
   "parameters": {
@@ -9064,7 +9064,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.47.16.16243",
-              "templateHash": "15415240877522189906"
+              "templateHash": "6182022269832326401"
             }
           },
           "parameters": {
@@ -13034,7 +13034,6 @@
                   "evaluationFrequency": {
                     "value": "[parameters('LogAlertsStorage')[range(0, length(parameters('LogAlertsStorage')))[copyIndex()]].evaluationFrequency]"
                   },
-                  "suppressForMinutes": "[if(and(not(parameters('AutoResolveAlert')), contains(createArray('PT1M', 'PT5M', 'PT10M', 'PT15M', 'PT30M', 'PT45M'), parameters('LogAlertsStorage')[range(0, length(parameters('LogAlertsStorage')))[copyIndex()]].evaluationFrequency)), createObject('value', 'PT1H'), createObject('value', ''))]",
                   "severity": {
                     "value": "[parameters('LogAlertsStorage')[range(0, length(parameters('LogAlertsStorage')))[copyIndex()]].severity]"
                   },
@@ -13605,7 +13604,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.47.16.16243",
-                      "templateHash": "2363867838425464309"
+                      "templateHash": "9060923673788997491"
                     }
                   },
                   "parameters": {
@@ -13635,16 +13634,7 @@
                     }
                   },
                   "variables": {
-                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]",
-                    "MuteActionsDuration": "PT1H",
-                    "SubHourlyFrequencies": [
-                      "PT1M",
-                      "PT5M",
-                      "PT10M",
-                      "PT15M",
-                      "PT30M",
-                      "PT45M"
-                    ]
+                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]"
                   },
                   "resources": [
                     {
@@ -13677,7 +13667,6 @@
                               ]
                             }
                           },
-                          "suppressForMinutes": "[if(and(not(parameters('AutoMitigate')), contains(variables('SubHourlyFrequencies'), parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].evaluationFrequency)), createObject('value', variables('MuteActionsDuration')), createObject('value', ''))]",
                           "scopes": {
                             "value": [
                               "[parameters('LogAnalyticsWorkspaceResourceId')]"
@@ -14291,7 +14280,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.47.16.16243",
-                      "templateHash": "2363867838425464309"
+                      "templateHash": "9060923673788997491"
                     }
                   },
                   "parameters": {
@@ -14321,16 +14310,7 @@
                     }
                   },
                   "variables": {
-                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]",
-                    "MuteActionsDuration": "PT1H",
-                    "SubHourlyFrequencies": [
-                      "PT1M",
-                      "PT5M",
-                      "PT10M",
-                      "PT15M",
-                      "PT30M",
-                      "PT45M"
-                    ]
+                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]"
                   },
                   "resources": [
                     {
@@ -14363,7 +14343,6 @@
                               ]
                             }
                           },
-                          "suppressForMinutes": "[if(and(not(parameters('AutoMitigate')), contains(variables('SubHourlyFrequencies'), parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].evaluationFrequency)), createObject('value', variables('MuteActionsDuration')), createObject('value', ''))]",
                           "scopes": {
                             "value": [
                               "[parameters('LogAnalyticsWorkspaceResourceId')]"

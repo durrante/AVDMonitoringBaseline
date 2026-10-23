@@ -130,9 +130,6 @@ module logAlertStorage '../carml/1.3.0/Microsoft.Insights/scheduledQueryRules/de
     alertDescription: LogAlertsStorage[i].description
     enabled: false
     evaluationFrequency: LogAlertsStorage[i].evaluationFrequency
-    // When alerts are not set to auto-resolve, mute notifications for an hour after firing on rules
-    // evaluated more often than hourly (Azure otherwise notifies at every evaluation)
-    suppressForMinutes: !AutoResolveAlert && contains(['PT1M', 'PT5M', 'PT10M', 'PT15M', 'PT30M', 'PT45M'], LogAlertsStorage[i].evaluationFrequency) ? 'PT1H' : ''
     severity: LogAlertsStorage[i].severity
     tags: contains(Tags, 'Microsoft.Insights/scheduledQueryRules') ? Tags['Microsoft.Insights/scheduledQueryRules'] : {}
     windowSize: LogAlertsStorage[i].windowSize

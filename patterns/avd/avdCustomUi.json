@@ -337,7 +337,7 @@
               "type": "Microsoft.Common.DropDown",
               "label": "Allow Alerts to Auto-Resolve",
               "defaultValue": "Yes",
-              "toolTip": "This option determines if the alert will automatically set the flag to resolved if a subsequent check is within the defined threshold.",
+              "toolTip": "Recommended: Yes. With Yes, each problem raises one alert that stays open while the problem lasts and resolves (with a Resolved notification) once it clears. With No, alerts never resolve and Azure sends a new notification at every check (every 5 to 15 minutes for most alerts) for as long as the problem lasts.",
               "constraints": {
                 "required": true,
                 "allowedValues": [

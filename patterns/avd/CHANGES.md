@@ -24,9 +24,9 @@ This fork of [Azure/azure-monitor-baseline-alerts](https://github.com/Azure/azur
 
 The Capacity alerts checked every 5 minutes but only looked at runbook output from the last 5 minutes. The runbook runs every 15 minutes, so 2 of every 3 checks found nothing, and an open alert could close and reopen repeatedly. The alerts now read the latest runbook run from the last 20 minutes.
 
-### 3. Repeat notifications muted when auto-resolve is off
+### 3. Auto-resolve guidance in the deployment form and FAQ
 
-When **Allow Alerts to Auto-Resolve** is **No**, Azure notifies at every check for as long as the condition holds. Log search alerts that are checked more often than hourly now mute notifications for 1 hour after firing in that mode, so a persistent problem notifies about once an hour instead of every 5 to 15 minutes. Deployments with auto-resolve on (the default) are unaffected: they already notify once per problem.
+With **Allow Alerts to Auto-Resolve** set to **No**, Azure sends a new notification at every check for as long as a problem lasts. The form's tooltip now says so and recommends **Yes**, and a new FAQ entry explains the difference. Notifications are deliberately **not** muted for deployments with auto-resolve off: Azure's mute setting applies to a whole alert rule, so it would also hold back a genuine alert for a different session host.
 
 ### 4. Upgrade guide
 

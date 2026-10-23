@@ -42,6 +42,22 @@ AzureDiagnostics
 
 `ScalingPlanState` is `Enabled`, `Disabled`, `None` (no plan assigned) or `Unknown` (the lookup failed).
 
+## Should I allow alerts to auto-resolve?
+
+Yes, keep **Allow Alerts to Auto-Resolve** set to **Yes** (the default).
+
+- **Yes:** each problem raises one alert, for example one per session host that is low on memory. The alert stays open while the problem lasts and sends a single notification. When the problem has been clear for a short period (about 15 minutes for alerts checked every 5 minutes), it resolves and sends a Resolved notification. A problem on a different host, or one caught by a different alert rule, always raises its own alert straight away.
+- **No:** alerts never resolve, and Azure sends a new notification at **every check** for as long as the problem lasts. For most alerts in this solution that is every 5 to 15 minutes. The solution deliberately does not mute these repeats. Azure's mute setting applies to a whole alert rule, so it would also hold back a genuine alert for a different session host.
+
+To check which setting a deployment uses, run this in Resource Graph Explorer:
+
+```kusto
+resources
+| where type =~ 'microsoft.insights/scheduledqueryrules'
+| where properties.description has 'Automated AVD Alert Deployment Solution'
+| summarize AlertRules = count() by subscriptionId, AutoResolve = tostring(properties.autoMitigate)
+```
+
 ## How do I stop alerts firing during planned maintenance?
 
 Use an [alert processing rule](https://learn.microsoft.com/azure/azure-monitor/alerts/alerts-processing-rules) to suppress notifications for the maintenance window, filtered on the alert rule and, where useful, the host name. A few of the alerts are also built to tolerate routine work on their own:

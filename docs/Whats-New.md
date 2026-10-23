@@ -8,7 +8,7 @@ To update your current deployment with the content from the latest release, plea
 
 - **One problem, one alert.** Available Memory, Local Disk, Azure File Share, Host Pool Capacity and Autoscale Failures alerts opened a new alert at every check while a problem lasted, because a changing value (such as free memory) was used as an alert dimension. They now measure the value instead, so you get one alert that stays open until the problem clears, with the value shown as the alert's metric value. On a production deployment this cut a morning's memory alerts from 126 to 14. The power-on protection for the memory alerts is unchanged.
 - **Host Pool Capacity alerts** now read the latest runbook run, instead of missing it on 2 of every 3 checks.
-- **Auto-resolve off?** Repeat notifications are now muted for 1 hour after an alert fires.
+- **Keep auto-resolve on.** The deployment form and FAQ now explain that with **Allow Alerts to Auto-Resolve = No**, Azure notifies at every check for as long as a problem lasts.
 - **New upgrade guide**, covering what to clean up after redeploying, including old metric memory alerts from before v2.3.0.
 - Full details in the [change log](../patterns/avd/CHANGES.md).
 
