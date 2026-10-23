@@ -1,28 +1,28 @@
 Name,Threshold(s) (Severity),Signal Type,Frequency,# Alert Rules,Notes
 AVD-HostPool-Autoscale Failures (hostpoolname),(3),Log Analytics,15 min,1/hostpool,New in v2.6.0: requires the Autoscale logs for pooled host pools diagnostic category (pooled host pools only)
-AVD-HostPool-Capacity,95% (1) / 85% (2) / 50% (3),Log Analytics,5 min,3/hostpool,Based on associated Automation Account / Runbook
+AVD-HostPool-Capacity,95% (1) / 85% (2) / 50% (3),Log Analytics,5 min,3/hostpool,Fixed in this fork: the load percentage was never parsed so these alerts never fired (fixed v2.4.0); v2.6.1 reads the latest runbook run and raises one alert per host pool with the load as the metric value. Based on associated Automation Account / Runbook
 AVD-HostPool-Diagnostic Data Not Received (hostpoolname),(2),Log Analytics,15 min,1/hostpool,New in v2.6.0: based on associated Automation Account / Runbook plus host pool diagnostics
 AVD-HostPool-Disconnected User over n Hours (hostpoolname),24 (1) / 72 (2),Log Analytics,1 hour,2/hostpool,
 AVD-HostPool-No Resources Available (hostpoolname),Any are Sev1,Log Analytics,15 min,1/hostpool,
 AVD-HostPool-Scaling Plan Disabled over n Hours (hostpoolname),4 (3) / 24 (2),Log Analytics,30 min (Sev3) / 6 hours (Sev2),2/hostpool,New in v2.6.0: based on associated Automation Account / Runbook
 AVD-HostPool-Scaling Plan Removed (hostpoolname),4 hours (3),Log Analytics,1 hour,1/hostpool,New in v2.6.0: based on associated Automation Account / Runbook; one-time change notification
 AVD-HostPool-VM-Agent Upgrade Failed or Stuck (hostpoolname),(3),Log Analytics,1 hour,1/hostpool,New in v2.6.0
-AVD-HostPool-VM-Available Memory Less Than nGB (hostpoolname),1gb (Sev1) / 2gb (Sev2),Log Analytics,5 min,2/hostpool,Modified in this fork: converted from metric to KQL alert to avoid power-on false positives
+AVD-HostPool-VM-Available Memory Less Than nGB (hostpoolname),1gb (Sev1) / 2gb (Sev2),Log Analytics,5 min,2/hostpool,Changed in this fork: converted from metric to KQL alert to avoid power-on false positives (v2.3.0); v2.6.1 raises one alert per session host with available MB as the metric value
 AVD-HostPool-VM-Drained and Idle over 24 Hours (hostpoolname),(3),Log Analytics,1 hour,1/hostpool,New in v2.6.0
-AVD-HostPool-VM-FSLogix Profile DiskCompactFailed (hostpoolname),(2),Log Analytics,5 min,1/hostpool,
-AVD-HostPool-VM-FSLogix Profile FailedAttachVHD (hostpoolname),(1),Log Analytics,5 min,1/hostpool,
-AVD-HostPool-VM-FSLogix Profile Less Than n% Free Space (hostpoolname),2% (1) / 5% (2),Log Analytics,5 min,2/hostpool,
-AVD-HostPool-VM-FSLogix Profile Failed due to Network Issue (hostpoolname),(1),Log Analytics,5 min,1/hostpool,
-AVD-HostPool-VM-FSLogix Profile Service Disabled (hostpoolname),(1),Log Analytics,5 min,1/hostpool,
-AVD-HostPool-VM-FSLogix Profile Disk Attached to another VM (hostpoolname),(2),Log Analytics,5 min,1/hostpool,Modified in this fork: surfaces UserName and ProfilePath dimensions
-AVD-HostPool-VM-Health Check Failure (hostpoolname),(1),Log Analytics,5 min,1/hostpool,Modified in this fork: maps health checks 11 (TURNRelay) and 19 (AADJoined)
-AVD-HostPool-VM-High CPU nn Percent (hostpoolname),95 (1) / 85 (2),Metric Alerts,5 min (Sev1) / 30 min (Sev2),2/hostpool,Modified in this fork: 85% alert evaluates every 30 min over 1 hour
-AVD-HostPool-VM-Local Disk Free Space n% (hostpoolname),5 (1) / 10 (2),Log Analytics,15 min,2/hostpool,
+AVD-HostPool-VM-FSLogix Profile DiskCompactFailed (hostpoolname),(2),Log Analytics,5 min,1/hostpool,Fixed in this fork: corrected join so results are filtered to the correct host pool
+AVD-HostPool-VM-FSLogix Profile FailedAttachVHD (hostpoolname),(1),Log Analytics,5 min,1/hostpool,Fixed in this fork: corrected join so results are filtered to the correct host pool
+AVD-HostPool-VM-FSLogix Profile Less Than n% Free Space (hostpoolname),2% (1) / 5% (2),Log Analytics,5 min,2/hostpool,Fixed in this fork: corrected join so results are filtered to the correct host pool
+AVD-HostPool-VM-FSLogix Profile Failed due to Network Issue (hostpoolname),(1),Log Analytics,5 min,1/hostpool,Fixed in this fork: corrected join so results are filtered to the correct host pool
+AVD-HostPool-VM-FSLogix Profile Service Disabled (hostpoolname),(1),Log Analytics,5 min,1/hostpool,Fixed in this fork: corrected join so results are filtered to the correct host pool
+AVD-HostPool-VM-FSLogix Profile Disk Attached to another VM (hostpoolname),(2),Log Analytics,5 min,1/hostpool,Changed in this fork: surfaces UserName and ProfilePath dimensions; corrected join so results are filtered to the correct host pool
+AVD-HostPool-VM-Health Check Failure (hostpoolname),(1),Log Analytics,5 min,1/hostpool,Fixed in this fork: maps health checks 11 (TURNRelay) and 19 (AADJoined) which were previously ignored
+AVD-HostPool-VM-High CPU nn Percent (hostpoolname),95 (1) / 85 (2),Metric Alerts,5 min (Sev1) / 30 min (Sev2),2/hostpool,Changed in this fork: 85% alert evaluates every 30 min over 1 hour
+AVD-HostPool-VM-Local Disk Free Space n% (hostpoolname),5 (1) / 10 (2),Log Analytics,15 min,2/hostpool,Changed in this fork: v2.6.1 raises one alert per session host with free space percent as the metric value
 AVD-HostPool-VM-Personal Assigned Not Healthy (hostpoolname),Any are Sev 1,Log Analytics,5 min,1/hostpool,
 AVD-HostPool-VM-OS Disk Bandwidth Avg n% (hostpoolname),95 (1) / 85 (2),Metric Alerts,5 min,2/hostpool,
 AVD-HostPool-VM-User Connection Failed (hostpoolname),Any are Sev 3,Log Analytics,15 min,1/hostpool,
 AVD-Storage-Low Space on ANF Share-XX Percent Remaining-{volumename},5 / 15,Metric Alerts,1 hour,2/vol,
-AVD-Storage-Low Space on Azure File Share-X% Remaining-{volumename},5 / 15,Log Analytics,1 hour,2/share,Based on associated Automation Account / Runbook
+AVD-Storage-Low Space on Azure File Share-X% Remaining-{volumename},5 / 15,Log Analytics,1 hour,2/share,Changed in this fork: v2.6.1 raises one alert per share with percent remaining as the metric value. Based on associated Automation Account / Runbook
 AVD-Storage-Over XXms Latency for Storage Act-{storacctname},100ms / 50ms,Metric Alerts,15 min,2/stor acct,
 AVD-Storage-Over XXms Latency Between Client-Storage-{storacctname},100ms / 50ms,Metric Alerts,15 min,2/stor acct,
 AVD-Storage-Possible Throttling Due to High IOPs-{storacctname},na / custom,Metric Alerts,15 min,1/stor acct,See storage throttling alert docs; Standard and Premium values incorporated
