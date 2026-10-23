@@ -38,7 +38,7 @@ module logAlertHostPoolQueries '../carml/1.3.0/Microsoft.Insights/scheduledQuery
     location: Location
     actions: [ActionGroupId]
     alertDisplayName: '${replace(LogAlertsHostPool[i].displayName, 'xHostPoolNamex', HostPoolResourceName)}-${Environment}'
-    alertDescription: '${replace(LogAlertsHostPool[i].description, 'xHostPoolNamex', HostPoolName)}-${Environment}'
+    alertDescription: replace(LogAlertsHostPool[i].description, 'xHostPoolNamex', HostPoolName)
     enabled: false
     evaluationFrequency: LogAlertsHostPool[i].evaluationFrequency
     severity: LogAlertsHostPool[i].severity

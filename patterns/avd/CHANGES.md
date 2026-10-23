@@ -28,7 +28,11 @@ The Capacity alerts checked every 5 minutes but only looked at runbook output fr
 
 With **Allow Alerts to Auto-Resolve** set to **No**, Azure sends a new notification at every check for as long as a problem lasts. The form's tooltip now says so and recommends **Yes**, and a new FAQ entry explains the difference. Notifications are deliberately **not** muted for deployments with auto-resolve off: Azure's mute setting applies to a whole alert rule, so it would also hold back a genuine alert for a different session host.
 
-### 4. Upgrade guide
+### 4. Clearer descriptions for the measured alerts
+
+The Available Memory, Local Disk Free Space, Low Space on Azure File Share and Host Pool Capacity descriptions were rewritten in one structure: what is wrong, what the alert's **metric value** means (for example "the 15 minute average of available memory, in MB"), and what to do about it. The Capacity and Azure Files descriptions previously explained the runbook's raw pipe- and comma-delimited output, which no longer appears in the alert. Host pool alert descriptions also no longer end with a stray environment letter (for example `-p`); the environment is still part of each alert rule's name.
+
+### 5. Upgrade guide
 
 [Update to a new release](../../docs/Update-to-new-Release.md) now explains how to upgrade and what a redeployment leaves behind, including the pre-v2.3.0 metric memory alerts. If those are not deleted, memory alerts arrive twice and still fire false positives at power-on.
 

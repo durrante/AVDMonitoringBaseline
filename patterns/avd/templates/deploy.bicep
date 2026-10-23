@@ -135,7 +135,7 @@ var LogAlertsHostPool = [
     // Based on Runbook script Output to LAW
     name: '${AlertNamePrefix}-HP-Cap-85Prcnt-xHostPoolNamex'
     displayName: '${AlertNamePrefix}-HostPool-Capacity 85 Percent (xHostPoolNamex)'
-    description: '${AlertDescriptionHeader}This alert is based on the Action Account and Runbook that populates the Log Analytics specificed with the AVD Metrics Deployment Solution for xHostPoolNamex.\n-->Last Number in the string is the Percentage Remaining for the Host Pool\nOutput is:\nHostPoolName|ResourceGroup|Type|MaxSessionLimit|NumberHosts|TotalUsers|DisconnectedUser|ActiveUsers|SessionsAvailable|HostPoolPercentageLoad'
+    description: '${AlertDescriptionHeader}Host pool xHostPoolNamex is using between 85 and 95 percent of its session capacity.\nMetric value: the load percentage, meaning user sessions (active and disconnected) as a percentage of the sessions available on session hosts that are available and accepting new sessions.\nAction: add session hosts or capacity, check that autoscale is running, and check for session hosts that are unavailable or in drain mode. Based on the Automation Account runbook, which reports every 15 minutes. Session counts are in the alert search results.'
     severity: 2
     evaluationFrequency: 'PT5M'
     windowSize: 'PT30M'
@@ -191,7 +191,7 @@ var LogAlertsHostPool = [
     // Based on Runbook script Output to LAW
     name: '${AlertNamePrefix}-HP-Cap-50Prcnt-xHostPoolNamex'
     displayName: '${AlertNamePrefix}-HostPool-Capacity 50 Percent (xHostPoolNamex)'
-    description: '${AlertDescriptionHeader}This alert is based on the Action Account and Runbook that populates the Log Analytics specificed with the AVD Metrics Deployment Solution for xHostPoolNamex.\n-->Last Number in the string is the Percentage Remaining for the Host Pool\nOutput is:\nHostPoolName|ResourceGroup|Type|MaxSessionLimit|NumberHosts|TotalUsers|DisconnectedUser|ActiveUsers|SessionsAvailable|HostPoolPercentageLoad'
+    description: '${AlertDescriptionHeader}Host pool xHostPoolNamex is using between 50 and 85 percent of its session capacity.\nMetric value: the load percentage, meaning user sessions (active and disconnected) as a percentage of the sessions available on session hosts that are available and accepting new sessions.\nAction: early warning only. No action is needed unless the load keeps rising towards your expected peak. Based on the Automation Account runbook, which reports every 15 minutes. Session counts are in the alert search results.'
     severity: 3
     evaluationFrequency: 'PT5M'
     windowSize: 'PT30M'
@@ -247,7 +247,7 @@ var LogAlertsHostPool = [
     // Based on Runbook script Output to LAW
     name: '${AlertNamePrefix}-HP-Cap-95Prcnt-xHostPoolNamex'
     displayName: '${AlertNamePrefix}-HostPool-Capacity 95 Percent (xHostPoolNamex)'
-    description: '${AlertDescriptionHeader}This alert is based on the Action Account and Runbook that populates the Log Analytics specificed with the AVD Metrics Deployment Solution for xHostPoolNamex.\n-->Last Number in the string is the Percentage Remaining for the Host Pool\nOutput is:\nHostPoolName|ResourceGroup|Type|MaxSessionLimit|NumberHosts|TotalUsers|DisconnectedUser|ActiveUsers|SessionsAvailable|HostPoolPercentageLoad'
+    description: '${AlertDescriptionHeader}Host pool xHostPoolNamex is using 95 percent or more of its session capacity. New users may soon be unable to connect.\nMetric value: the load percentage, meaning user sessions (active and disconnected) as a percentage of the sessions available on session hosts that are available and accepting new sessions.\nAction: add capacity now. Start or add session hosts, check that autoscale is running, and bring unavailable or drained session hosts back into service. Based on the Automation Account runbook, which reports every 15 minutes. Session counts are in the alert search results.'
     severity: 1
     evaluationFrequency: 'PT5M'
     windowSize: 'PT30M'
@@ -419,7 +419,7 @@ var LogAlertsHostPool = [
   {
     name: '${AlertNamePrefix}-HP-VM-LocDskFree10Prcnt-xHostPoolNamex'
     displayName: '${AlertNamePrefix}-HostPool-VM-Local Disk Free Space 10 Percent (xHostPoolNamex)'
-    description: '${AlertDescriptionHeader}Disk space Moderately Low. \nConsider review of the VM local C drive and determine what is consuming disk space for the VM in xHostPoolNamex. This could be local profiles or temp files that need to be cleaned up or removed.'
+    description: '${AlertDescriptionHeader}A session host in xHostPoolNamex has 10 percent or less free space on a local disk (the temporary D: drive is excluded).\nMetric value: the free space percentage reported by the session host.\nAction: find what is using the space, such as local profiles, temp files, logs or update caches, then clean up or expand the disk.'
     severity: 2
     evaluationFrequency: 'PT15M'
     windowSize: 'PT15M'
@@ -490,7 +490,7 @@ var LogAlertsHostPool = [
   {
     name: '${AlertNamePrefix}-HP-VM-LocDskFree5Prcnt-xHostPoolNamex'
     displayName: '${AlertNamePrefix}-HostPool-VM-Local Disk Free Space 5 Percent (xHostPoolNamex)'
-    description: '${AlertDescriptionHeader}Disk space Critically Low. \nConsider review of the VM local C drive and determine what is consuming disk space for the VM in xHostPoolNamex. This could be local profiles or temp files that need to be cleaned up or removed.'
+    description: '${AlertDescriptionHeader}A session host in xHostPoolNamex has 5 percent or less free space on a local disk (the temporary D: drive is excluded). Applications, Windows updates and sign-ins can fail when the disk fills.\nMetric value: the free space percentage reported by the session host.\nAction: free up space now, for example local profiles, temp files, logs or update caches, or expand the disk.'
     severity: 1
     evaluationFrequency: 'PT15M'
     windowSize: 'PT15M'
@@ -1122,7 +1122,7 @@ var LogAlertsHostPool = [
   {
     name: '${AlertNamePrefix}-HP-VM-AvailMemLess-2GB-xHostPoolNamex'
     displayName: '${AlertNamePrefix}-HostPool-VM-Available Memory Less Than 2GB (xHostPoolNamex)'
-    description: '${AlertDescriptionHeader}Potential performance issues for users on the same host due to moderately low memory. Log query based alert that only evaluates session hosts reporting performance data for the full evaluation window, avoiding false positives while a VM is powering on. Investigate session host memory usage per user and/or memory requirements and adjust if/as needed for xHostPoolNamex. Check user active vs. disconnected status.'
+    description: '${AlertDescriptionHeader}A session host in xHostPoolNamex has averaged 2 GB or less of available memory over the last 15 minutes. This can slow down every user on that host.\nMetric value: that 15 minute average, in MB. Session hosts that have reported for less than 10 minutes are ignored, so hosts that have just powered on do not raise this alert.\nAction: check which users and processes are using the memory (including disconnected sessions), and whether the host pool maximum sessions per host suits the VM size. One alert is raised per session host and stays open until memory recovers.'
     severity: 2
     evaluationFrequency: 'PT5M'
     windowSize: 'PT15M'
@@ -1189,7 +1189,7 @@ var LogAlertsHostPool = [
   {
     name: '${AlertNamePrefix}-HP-VM-AvailMemLess-1GB-xHostPoolNamex'
     displayName: '${AlertNamePrefix}-HostPool-VM-Available Memory Less Than 1GB (xHostPoolNamex)'
-    description: '${AlertDescriptionHeader}Potential performance issues for users on the same host due to critically low memory. Log query based alert that only evaluates session hosts reporting performance data for the full evaluation window, avoiding false positives while a VM is powering on. Investigate session host memory usage per user and/or memory requirements and adjust if/as needed for xHostPoolNamex. Check user active vs. disconnected status.'
+    description: '${AlertDescriptionHeader}A session host in xHostPoolNamex has averaged 1 GB or less of available memory over the last 15 minutes. Users on that host are likely to see slowdowns, hangs or application crashes.\nMetric value: that 15 minute average, in MB. Session hosts that have reported for less than 10 minutes are ignored, so hosts that have just powered on do not raise this alert.\nAction: investigate now. Consider drain mode to stop new sessions landing on the host, sign out disconnected sessions, and check which processes are using the memory. One alert is raised per session host and stays open until memory recovers.'
     severity: 1
     evaluationFrequency: 'PT5M'
     windowSize: 'PT15M'
@@ -1930,7 +1930,7 @@ var LogAlertsStorage = [
     // Based on Runbook script Output to LAW
     name: '${AlertNamePrefix}-StorLowSpaceAzFile-15PrcntRem-${uniqueString(subscription().displayName)}'
     displayName: '${AlertNamePrefix}-Storage-Low Space on Azure File Share-15 Percent Remaining'
-    description: '${AlertDescriptionHeader}This alert is based on the Action Account and Runbook that populates the Log Analytics specificed with the AVD Metrics Deployment Solution.\nNOTE: The Runbook reads share usage via the Azure management plane, so it works regardless of the storage account network configuration (firewalls and private endpoints included)\n-->Last Number in the string is the Percentage Remaining for the Share.\nOutput: ResultsDescription\nStorageType,Subscription,ResourceGroup,StorageAccount,ShareName,Quota,GBUsed,PercentRemaining'
+    description: '${AlertDescriptionHeader}An Azure Files share used for AVD (FSLogix profiles or app attach) has 15 percent or less of its quota remaining. The storage account and share are in the alert details.\nMetric value: the percentage of the share quota remaining.\nAction: increase the share quota or free up space, for example by removing profiles of users who have left. Based on the Automation Account runbook, which reads share usage through the Azure management plane, so it works with storage firewalls and private endpoints.'
     severity: 2
     evaluationFrequency: 'PT10M'
     windowSize: 'PT1H'
@@ -1990,7 +1990,7 @@ var LogAlertsStorage = [
     // Based on Runbook script Output to LAW
     name: '${AlertNamePrefix}-StorLowSpaceAzFile-5PrcntRem-${uniqueString(subscription().displayName)}'
     displayName: '${AlertNamePrefix}-Storage-Low Space on Azure File Share-5 Percent Remaining'
-    description: '${AlertDescriptionHeader}This alert is based on the Action Account and Runbook that populates the Log Analytics specificed with the AVD Metrics Deployment Solution.\nNOTE: The Runbook reads share usage via the Azure management plane, so it works regardless of the storage account network configuration (firewalls and private endpoints included)\n-->Last Number in the string is the Percentage Remaining for the Share.\nOutput: ResultsDescription\nStorageType,Subscription,ResourceGroup,StorageAccount,ShareName,Quota,GBUsed,PercentRemaining'
+    description: '${AlertDescriptionHeader}An Azure Files share used for AVD (FSLogix profiles or app attach) has 5 percent or less of its quota remaining. When the share fills, users can fail to sign in or lose profile changes. The storage account and share are in the alert details.\nMetric value: the percentage of the share quota remaining.\nAction: increase the share quota now, then free up space, for example by removing profiles of users who have left. Based on the Automation Account runbook, which reads share usage through the Azure management plane, so it works with storage firewalls and private endpoints.'
     severity: 1
     evaluationFrequency: 'PT10M'
     windowSize: 'PT1H'
