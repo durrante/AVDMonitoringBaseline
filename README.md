@@ -36,7 +36,7 @@ Each was designed to fire only when something is genuinely wrong, and to stay qu
 | Change | Why |
 |---|---|
 | `LogAlertsStorage` template fix (via upstream PR #839) | Upstream template failed validation, blocking all deployments (issue #812) |
-| Host Pool Capacity alerts (50/85/95%) fixed | `toint()` on the runbook's decimal load percentage silently returned `null`, so these alerts never fired regardless of actual load |
+| Host Pool Capacity alerts (50/85/95%) fixed | `toint()` on the runbook's decimal load percentage silently returned `null`, so these alerts never fired regardless of actual load. They also now read the latest runbook run (v2.6.1), instead of missing it on 2 of every 3 checks |
 | FSLogix queries: `leftouter` changed to `inner` join (via upstream PR #839) | Duplicate/incorrect alerts when multiple host pools share a workspace |
 | Health Check Failure alert maps health checks 11 and 19 | `TURNRelayAccessHealthCheck` and `AADJoinedHealthCheck` were previously dropped as `InvalidIndex` |
 
@@ -46,7 +46,8 @@ Each was designed to fire only when something is genuinely wrong, and to stay qu
 |---|---|
 | Available Memory alerts converted from metric to log query (KQL) alerts | Metric alerts fired false positives while session hosts were powering on (issue #656). The KQL version only evaluates hosts that have been reporting for the full window |
 | High CPU 85% alert: every 30 min over a 1-hour window (was 5 min / 15 min) | Reduces noise from short CPU spikes. The 95% Sev1 alert keeps the fast 5-minute cadence |
-| Available Memory, Local Disk Free Space and Azure File Share alerts show the value that triggered them | The current MB/percent value was computed in the query but not surfaced in the fired alert |
+| One alert per problem, not one per check (v2.6.1) | Memory, local disk, Azure File Share and Capacity alerts opened a new alert at every check while a problem lasted, because a changing value was used as an alert dimension. On a production deployment that meant 126 memory alerts in a morning; now it's 14. Each host, share or host pool gets one alert that stays open until the problem clears |
+| Memory, local disk, Azure File Share and Capacity alerts show the value that triggered them | The free memory, free space or load is shown as the alert's metric value, and each alert's description explains what the value means and what to do |
 | FSLogix "Profile Disk Attached to another VM" includes `UserName` and `ProfilePath` | Fired alerts identify whose profile disk is locked and which VHD(X), without digging through event logs |
 
 ### Deployment and operations
@@ -59,6 +60,7 @@ Each was designed to fire only when something is genuinely wrong, and to stay qu
 | New optional `CustomerName` parameter | Identifies the customer/tenant in every alert description, useful for MSPs |
 | Storage runbook RBAC reduced to Reader | The Automation Account only reads share usage (via the ARM management plane), so the previous Storage Account Contributor grant was over-privileged |
 | Runbook scripts come from the same location as the template (v2.6.0) | Deploying from a branch or release now installs that version's runbooks, instead of always using `main` |
+| Upgrade guide (v2.6.1) | [Update to a new release](docs/Update-to-new-Release.md) explains how to upgrade and what a redeployment leaves behind, such as the old metric memory alerts from before v2.3.0 |
 
 ## 📖 Overview
 
