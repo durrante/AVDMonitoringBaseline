@@ -8,7 +8,7 @@ See [What's New](docs/Whats-New.md) and the full [change log](patterns/avd/CHANG
 
 ## 🙏 Credit
 
-This solution is around 95% the work of the original AMBA AVD pattern authors: the Microsoft AMBA team, the AVD product group and community contributors. A particular shout-out to [@JCoreMS](https://github.com/JCoreMS), who built and maintained the AVD pattern for a long time, and [@fbloemhof](https://github.com/fbloemhof), whose unmerged upstream fixes are incorporated here. The design, alert coverage, deployment experience and documentation are theirs.
+This fork is built on the AMBA AVD pattern by the Microsoft AMBA team, the AVD product group and community contributors. A particular shout-out to [@JCoreMS](https://github.com/JCoreMS), who built and maintained the AVD pattern for a long time, and to [@fbloemhof](https://github.com/fbloemhof), whose unmerged upstream fixes are included here. The original architecture, most of the alert rules and the deployment framework are their work. This fork adds bug fixes, noise reduction, new alerts and multi-subscription support on top. See [What's different from the original baseline](#-whats-different-from-the-original-baseline) for the details.
 
 ## 💡 Why this fork exists
 
