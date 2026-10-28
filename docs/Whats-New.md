@@ -4,6 +4,13 @@ For information on what's new please refer to the [Releases](https://github.com/
 
 To update your current deployment with the content from the latest release, please refer to the [Update to new release](Update-to-new-Release.md) page.
 
+## 2026-10-28 — v2.6.2 (this fork)
+
+- **Scaling plan alerts now say where to find who made the change, and when.** The Scaling Plan Disabled and Removed alert descriptions point to the scaling plan's Activity log, and a new [FAQ entry](FAQ.md#who-disabled-the-scaling-plan-and-when) has queries for the exact time and the person or account responsible.
+- The FAQ also explains why a disabled plan might not show an alert: the Alerts page defaults to the last 24 hours, and an open alert does not notify again.
+- Optional upgrade: only the three alert descriptions change.
+- Full details in the [change log](../patterns/avd/CHANGES.md).
+
 ## 2026-10-23 — v2.6.1 (this fork)
 
 - **One problem, one alert.** Available Memory, Local Disk, Azure File Share, Host Pool Capacity and Autoscale Failures alerts opened a new alert at every check while a problem lasted, because a changing value (such as free memory) was used as an alert dimension. They now measure the value instead, so you get one alert that stays open until the problem clears, with the value shown as the alert's metric value. On a production deployment this cut a morning's memory alerts from 126 to 14. The power-on protection for the memory alerts is unchanged.

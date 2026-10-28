@@ -2,7 +2,29 @@
 
 This fork of [Azure/azure-monitor-baseline-alerts](https://github.com/Azure/azure-monitor-baseline-alerts) (`patterns/avd`) is maintained independently because upstream development of the AVD pattern has gone stale. This document lists every functional change from the upstream baseline (upstream `main` as of commit `ba0266b3`, template v2.2.1) so users migrating from the original solution can see exactly what differs.
 
-**Current version: v2.6.1** (2026-10-23)
+**Current version: v2.6.2** (2026-10-28)
+
+---
+
+## v2.6.2 (2026-10-28) — this fork
+
+### 1. Scaling plan alerts say where to find who made the change, and when
+
+The **Scaling Plan Disabled over 4 / 24 Hours** and **Scaling Plan Removed** alert descriptions now end with a short "Who and when" section. It tells the reader to open the scaling plan's **Activity log**, find **Create or Update Scaling Plan**, and read **Event initiated by** (who) and the **Change history** tab (what changed). For a removed plan, it also covers a deleted scaling plan.
+
+The alerts do not look this up themselves. "Who" lives in the Azure Activity Log, which is often sent to a different Log Analytics workspace (or none), and reading it from the runbook would need extra permissions. The runbook also cannot tell a change to the enabled setting apart from a schedule edit. Pointing to the Activity Log keeps the alerts dependable.
+
+### 2. New FAQ entry: "Who disabled the scaling plan, and when?"
+
+The [FAQ](../../docs/FAQ.md) now includes:
+
+- a query over the runbook's history that shows when a host pool's scaling plan state changed, accurate to 15 minutes
+- step-by-step instructions for finding who made the change in the Activity Log, plus an `AzureActivity` query for environments that send the Activity Log to Log Analytics
+- what to check when the query shows a disabled plan but no alert is visible: the Alerts page defaults to the last 24 hours, and an open alert does not notify again
+
+### Upgrade notes
+
+- Redeploy to update the three alert descriptions. Nothing else in the alerts changes, so this upgrade is optional.
 
 ---
 

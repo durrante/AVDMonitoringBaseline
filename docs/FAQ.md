@@ -42,6 +42,50 @@ AzureDiagnostics
 
 `ScalingPlanState` is `Enabled`, `Disabled`, `None` (no plan assigned) or `Unknown` (the lookup failed).
 
+## Who disabled the scaling plan, and when?
+
+The runbook records each host pool's scaling plan state every 15 minutes, so its history shows **when** the state changed. The Azure Activity Log shows **who** changed it.
+
+**When:** run this in the Log Analytics workspace used by this solution, replacing the host pool name. The row where `ScalingPlanState` changes from `Enabled` to `Disabled` (or to `None` if the plan was removed) is the change; it happened in the 15 minutes before that row's `TimeGenerated`. An earlier row going from blank to `Enabled` only marks when the v2.6.0 runbook started reporting.
+
+```kusto
+AzureDiagnostics
+| where TimeGenerated > ago(7d)
+| where Category has "JobStreams" and StreamType_s == "Output" and RunbookName_s == "AvdHostPoolLogData"
+| extend HostPoolName = tostring(split(ResultDescription, '|')[0])
+| extend ScalingPlanState = trim(@"\s", tostring(split(ResultDescription, '|')[14]))
+| where HostPoolName =~ '<host pool name>'
+| order by TimeGenerated asc
+| extend PreviousState = prev(ScalingPlanState)
+| where ScalingPlanState != PreviousState
+| project TimeGenerated, PreviousState, ScalingPlanState
+```
+
+**Who:** turning autoscale off for a host pool, or removing the host pool from the plan, is recorded as a change to the **scaling plan**, not the host pool.
+
+1. In the Azure portal, open the scaling plan, then **Activity log** (kept for 90 days).
+2. Set the timespan to cover the time found above, and look for **Create or Update Scaling Plan**.
+3. **Event initiated by** shows who made the change.
+4. Open the entry and select **Change history**. It shows `scalingPlanEnabled` changing to `false` (disabled), or the host pool disappearing from `hostPoolReferences` (removed). Schedule edits are recorded as separate *pooled schedule* operations, so they are easy to tell apart.
+
+If the scaling plan itself was deleted, look for **Delete Scaling Plan** in the resource group's Activity log instead.
+
+If your Activity Log is sent to a Log Analytics workspace, this finds the same entries in one go. It returns nothing if the Activity Log is not sent there; it may be in a different workspace from the one this solution uses.
+
+```kusto
+AzureActivity
+| where TimeGenerated > ago(7d)
+| where OperationNameValue has "Microsoft.DesktopVirtualization/scalingPlans"
+| where _ResourceId has "<scaling plan name>"
+| project TimeGenerated, OperationNameValue, ActivityStatusValue, Caller, CallerIpAddress
+| order by TimeGenerated desc
+```
+
+**The query shows the plan disabled, but I can't see an alert.** Check two things before anything else:
+
+- **The Alerts page shows the last 24 hours by default.** An alert that fired earlier is still open but outside that window, so widen the time range.
+- **An open alert does not notify again.** Each alert notifies once when it fires and once when it resolves. If autoscale has been off for days, the notifications went out when each alert first fired: about 4 hours after the change for the Sev3 alert, and about 24 to 30 hours after it for the Sev2 alert.
+
 ## Should I allow alerts to auto-resolve?
 
 Yes, keep **Allow Alerts to Auto-Resolve** set to **Yes** (the default).

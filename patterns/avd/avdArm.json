@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "9252745214519018282"
+      "templateHash": "17684123606103191809"
     }
   },
   "parameters": {
@@ -176,7 +176,7 @@
       }
     ],
     "ActionGroupName": "[format('ag-avdmetrics-{0}-{1}-{2}', parameters('Environment'), parameters('Location'), uniqueString(subscription().displayName))]",
-    "AlertDescriptionHeader": "[if(empty(parameters('CustomerName')), 'Automated AVD Alert Deployment Solution (v2.6.1)\n', format('Customer: {0}\nAutomated AVD Alert Deployment Solution (v2.6.1)\n', parameters('CustomerName')))]",
+    "AlertDescriptionHeader": "[if(empty(parameters('CustomerName')), 'Automated AVD Alert Deployment Solution (v2.6.2)\n', format('Customer: {0}\nAutomated AVD Alert Deployment Solution (v2.6.2)\n', parameters('CustomerName')))]",
     "AutomationAccountName": "[format('aa-avdmetrics-{0}-{1}-{2}', parameters('Environment'), parameters('Location'), parameters('AlertNamePrefix'))]",
     "CloudEnvironment": "[environment().name]",
     "ResourceGroupCreate": "[if(equals(parameters('ResourceGroupStatus'), 'New'), true(), false())]",
@@ -1228,7 +1228,7 @@
       {
         "name": "[format('{0}-HP-ScalPlanDisabled4Hrs-xHostPoolNamex', parameters('AlertNamePrefix'))]",
         "displayName": "[format('{0}-HostPool-Scaling Plan Disabled over 4 Hours (xHostPoolNamex)', parameters('AlertNamePrefix'))]",
-        "description": "[format('{0}Autoscale has been disabled for host pool xHostPoolNamex on its scaling plan host pool assignment for over 4 hours. While disabled, autoscale does not start or stop session hosts, so hosts can be left running (cost) or not started when users need them (capacity). If this is planned maintenance, re-enable autoscale on the scaling plan host pool assignment when the work is complete, or suppress this alert for the maintenance window with an alert processing rule. Based on the Automation Account runbook output, which checks the scaling plan every 15 minutes.', variables('AlertDescriptionHeader'))]",
+        "description": "[format('{0}Autoscale has been disabled for host pool xHostPoolNamex on its scaling plan host pool assignment for over 4 hours. While disabled, autoscale does not start or stop session hosts, so hosts can be left running (cost) or not started when users need them (capacity). If this is planned maintenance, re-enable autoscale on the scaling plan host pool assignment when the work is complete, or suppress this alert for the maintenance window with an alert processing rule. Based on the Automation Account runbook output, which checks the scaling plan every 15 minutes.\nWho and when: open the scaling plan (shown in ScalingPlanName) and go to Activity log. Look for Create or Update Scaling Plan around the time autoscale was turned off. Event initiated by shows who made the change, and the Change history tab shows scalingPlanEnabled changing to false. For the exact time, see the FAQ entry Who disabled the scaling plan, and when? at https://github.com/durrante/AVDMonitoringBaseline/blob/main/docs/FAQ.md', variables('AlertDescriptionHeader'))]",
         "severity": 3,
         "evaluationFrequency": "PT30M",
         "windowSize": "PT4H",
@@ -1266,7 +1266,7 @@
       {
         "name": "[format('{0}-HP-ScalPlanDisabled24Hrs-xHostPoolNamex', parameters('AlertNamePrefix'))]",
         "displayName": "[format('{0}-HostPool-Scaling Plan Disabled over 24 Hours (xHostPoolNamex)', parameters('AlertNamePrefix'))]",
-        "description": "[format('{0}Autoscale has been disabled for host pool xHostPoolNamex on its scaling plan host pool assignment for over 24 hours. This usually means autoscale was turned off for maintenance and not turned back on: session hosts may be running outside working hours (cost) or not starting when users need them (capacity). Re-enable autoscale on the scaling plan host pool assignment. If the plan is intentionally disabled long term, disable this alert rule for this host pool. Evaluated every 6 hours so an intentionally disabled plan does not notify every hour when auto-resolve is turned off.', variables('AlertDescriptionHeader'))]",
+        "description": "[format('{0}Autoscale has been disabled for host pool xHostPoolNamex on its scaling plan host pool assignment for over 24 hours. This usually means autoscale was turned off for maintenance and not turned back on: session hosts may be running outside working hours (cost) or not starting when users need them (capacity). Re-enable autoscale on the scaling plan host pool assignment. If the plan is intentionally disabled long term, disable this alert rule for this host pool. Evaluated every 6 hours so an intentionally disabled plan does not notify every hour when auto-resolve is turned off.\nWho and when: open the scaling plan (shown in ScalingPlanName) and go to Activity log. Look for Create or Update Scaling Plan around the time autoscale was turned off. Event initiated by shows who made the change, and the Change history tab shows scalingPlanEnabled changing to false. For the exact time, see the FAQ entry Who disabled the scaling plan, and when? at https://github.com/durrante/AVDMonitoringBaseline/blob/main/docs/FAQ.md', variables('AlertDescriptionHeader'))]",
         "severity": 2,
         "evaluationFrequency": "PT6H",
         "windowSize": "P1D",
@@ -1304,7 +1304,7 @@
       {
         "name": "[format('{0}-HP-ScalPlanRemoved-xHostPoolNamex', parameters('AlertNamePrefix'))]",
         "displayName": "[format('{0}-HostPool-Scaling Plan Removed (xHostPoolNamex)', parameters('AlertNamePrefix'))]",
-        "description": "[format('{0}Host pool xHostPoolNamex had a scaling plan assigned, and for the last 4 hours it has had none. Without a scaling plan, autoscale does not start or stop session hosts for this host pool. If the removal was not intended, assign the scaling plan (shown in RemovedScalingPlan) to the host pool again. This can also be raised if the Automation Account identity lost read access to the scaling plan, or the scaling plan was moved to another resource group: redeploy the solution so access is granted again. This is a one-time change notification: it fires once per removal and closes at the next hourly check, so a resolved notice does NOT mean a scaling plan was reassigned.', variables('AlertDescriptionHeader'))]",
+        "description": "[format('{0}Host pool xHostPoolNamex had a scaling plan assigned, and for the last 4 hours it has had none. Without a scaling plan, autoscale does not start or stop session hosts for this host pool. If the removal was not intended, assign the scaling plan (shown in RemovedScalingPlan) to the host pool again. This can also be raised if the Automation Account identity lost read access to the scaling plan, or the scaling plan was moved to another resource group: redeploy the solution so access is granted again. This is a one-time change notification: it fires once per removal and closes at the next hourly check, so a resolved notice does NOT mean a scaling plan was reassigned.\nWho and when: open the scaling plan (shown in RemovedScalingPlan) and go to Activity log. Look for Create or Update Scaling Plan shortly after LastSeenWithPlan. Event initiated by shows who made the change, and the Change history tab shows the host pool removed from hostPoolReferences. If the scaling plan itself was deleted, look for Delete Scaling Plan in the resource group Activity log instead.', variables('AlertDescriptionHeader'))]",
         "severity": 3,
         "evaluationFrequency": "PT1H",
         "windowSize": "PT6H",
