@@ -13,7 +13,7 @@ An AVD deployment with associated Insights configuration per the AVD Portal's AV
 3. Log Analytics Workspace for AVD with diagnostics enabled per the configuration workbook.
     - Host Pool Diagnostics enabled
     - Workspace Diagnostics enabled
-    - Data Collection Rule associated with the Log Analytics Workspace
+    - Data Collection Rule associated with the Log Analytics Workspace. The standard AVD Insights rule collects everything the alerts need. With a custom rule, make sure it collects the FSLogix Operational and Admin logs, `System` at all levels, `Application` warnings and errors, and `Microsoft-Windows-TerminalServices-LocalSessionManager/Operational`, which the FSLogix, Disk IO Timeouts and FSLogix service alerts read
 4. Storage either Azure Files or Azure NetApp Files configured for FSLogix Profiles (optional)
 5. For the Autoscale Failures alert only: the **Autoscale logs for pooled host pools** category added to the host pool diagnostic settings (optional)
 

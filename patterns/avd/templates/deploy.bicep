@@ -85,7 +85,7 @@ param ANFVolumeResourceIds array = []
 param Tags object = {}
 
 var ActionGroupName = 'ag-avdmetrics-${Environment}-${Location}-${uniqueString(subscription().displayName)}'
-var AlertDescriptionHeader = empty(CustomerName) ? 'Automated AVD Alert Deployment Solution (v2.6.2)\n' : 'Customer: ${CustomerName}\nAutomated AVD Alert Deployment Solution (v2.6.2)\n' // DESCRIPTION HEADER AND VERSION <-----------------------------
+var AlertDescriptionHeader = empty(CustomerName) ? 'Automated AVD Alert Deployment Solution (v2.7.0)\n' : 'Customer: ${CustomerName}\nAutomated AVD Alert Deployment Solution (v2.7.0)\n' // DESCRIPTION HEADER AND VERSION <-----------------------------
 var AutomationAccountName = 'aa-avdmetrics-${Environment}-${Location}-${AlertNamePrefix}'
 var CloudEnvironment = environment().name
 var ResourceGroupCreate = ResourceGroupStatus == 'New' ? true : false
@@ -1120,6 +1120,402 @@ var LogAlertsHostPool = [
     }
   }
   {
+    // FSLogix waited 60 seconds for a user's logon lock and gave up, or Winlogon reports frxsvc failed a critical
+    // logon notification. Both mean a sign-in was blocked. The FSLogix mutex and check session lock errors are
+    // deliberately not used: a single pair of them is logged on most days on healthy hosts
+    name: '${AlertNamePrefix}-HP-VM-FSLgxProf-LogonBlkd-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-VM-FSLogix Profile Logon Blocked (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}FSLogix blocked a user sign-in on a session host in xHostPoolNamex: it waited 60 seconds for the user logon lock and gave up, or Windows reported that the FSLogix service failed to handle the sign-in. The user sees a long "Please wait for the FSLogix Apps Services" and the sign-in fails or times out.\nMetric value: the number of blocked sign-in events in the last 15 minutes. Open View query results for the session host and the user names.\nAction: if 2 or more users are affected, the host is usually stuck and the Logon Blocked for Multiple Users alert (Sev1) also fires: follow that alert. For a single user, check whether they still have a session on this host that is stuck signing out (Task Manager > Users, or the host pool Sessions blade), log it off, then ask them to sign in again.\nInvestigate: on the host, search C:\\ProgramData\\FSLogix\\Logs\\Profile\\Profile_<yyyyMMdd>.log for the user name. Check the System event log for vhdmp 129 or disk 153 warnings, which mean the profile disk storage stopped responding (see the VM-Disk IO Timeouts alert), and compare the storage account latency for the same time.\nNote: a single "Failed to acquire mutex" or "check session lock" error on its own is normal and is deliberately ignored. Events logged just before a restart can arrive when the host next starts, so check the event times in the query results.'
+    severity: 2
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT15M'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          Event
+          | where (EventLog == "Microsoft-FSLogix-Apps/Operational" and EventID == 26 and RenderedDescription has "logon lock" and RenderedDescription contains "Failed to acquire")
+              or (EventLog == "Application" and Source == "Microsoft-Windows-Winlogon" and EventID == 6004 and RenderedDescription has "frxsvc")
+          | parse _ResourceId with "/subscriptions/" subscription "/resourcegroups/" ResourceGroup "/providers/microsoft.compute/virtualmachines/" ComputerName
+          | extend ComputerName=tolower(ComputerName)
+          // FSLogix logs the user in the message text; the UserName column is always NT AUTHORITY\SYSTEM
+          | extend BlockedUser=extract(@"for user:? ([^\s(]+)", 1, RenderedDescription)
+          | summarize BlockedLogons=count(), AffectedUsers=dcountif(BlockedUser, isnotempty(BlockedUser)), Users=make_set_if(BlockedUser, isnotempty(BlockedUser), 20), FirstEvent=min(TimeGenerated), LastEvent=max(TimeGenerated) by ComputerName
+          | join kind = inner
+              (
+                WVDAgentHealthStatus
+                | where tostring(split(_ResourceId, '/')[8]) =~ 'xHostPoolNamex'
+                | parse SessionHostResourceId with "/subscriptions/" VMsubscription "/resourceGroups/" VMresourceGroup "/providers/Microsoft.Compute/virtualMachines/" ComputerName
+                | extend ComputerName=tolower(ComputerName), HostPool=tostring(split(_ResourceId, '/')[8])
+                | summarize arg_max(TimeGenerated, VMresourceGroup, HostPool) by ComputerName
+                | project ComputerName, VMresourceGroup, HostPool
+              ) on ComputerName
+          | extend Users=strcat_array(Users, ', ')
+          | project LastEvent, ComputerName, HostPool, VMresourceGroup, BlockedLogons, AffectedUsers, Users, FirstEvent
+          '''
+          // Measure the count instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Maximum'
+          metricMeasureColumn: 'BlockedLogons'
+          dimensions: [
+            {
+              name: 'ComputerName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'VMresourceGroup'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'HostPool'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 1
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
+    // Same signals as Logon Blocked, but 2 or more different users on one host in 30 minutes: the host is stuck
+    name: '${AlertNamePrefix}-HP-VM-FSLgxProf-LogonBlkdMult-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-VM-FSLogix Profile Logon Blocked for Multiple Users (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}FSLogix has blocked sign-ins for 2 or more different users on the same session host in xHostPoolNamex in the last 30 minutes. The host is very likely stuck, typically waiting on profile disk storage, and every new user sent to it will fail to sign in. Azure Virtual Desktop still reports the host as Available, so it keeps sending users to it, and autoscale does not add capacity because failed sign-ins do not count as sessions.\nMetric value: the number of different users blocked. Open View query results for the session host and the user names.\nAction now: 1) Turn off Allow new sessions (drain mode) on this session host. 2) Make sure another session host is running and available; if this was the only one powered on, start another. 3) Ask affected users to sign out and sign in again so they land on a healthy host. 4) Restart the stuck host. It may hang while shutting down, in which case restart it from the Azure portal. Turn drain mode off once users can sign in to it again.\nInvestigate, before the restart if you can: the System event log for vhdmp 129 and disk 153 warnings (profile disk IO timeouts) and when they started, Winlogon 6005 and 6006 warnings for frxsvc in the Application log, and C:\\ProgramData\\FSLogix\\Logs\\Profile. On the storage account, compare Success E2E Latency with Success Server Latency for the time the problem started: high end-to-end latency with normal server latency points at the host or network path (SMB, private endpoint, DNS), high server latency points at storage. The FAQ entry Users cannot sign in to one session host at https://github.com/durrante/AVDMonitoringBaseline/blob/main/docs/FAQ.md has a timeline query and an evidence checklist.'
+    severity: 1
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT30M'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          Event
+          | where (EventLog == "Microsoft-FSLogix-Apps/Operational" and EventID == 26 and RenderedDescription has "logon lock" and RenderedDescription contains "Failed to acquire")
+              or (EventLog == "Application" and Source == "Microsoft-Windows-Winlogon" and EventID == 6004 and RenderedDescription has "frxsvc")
+          | parse _ResourceId with "/subscriptions/" subscription "/resourcegroups/" ResourceGroup "/providers/microsoft.compute/virtualmachines/" ComputerName
+          | extend ComputerName=tolower(ComputerName)
+          // FSLogix logs the user in the message text; the UserName column is always NT AUTHORITY\SYSTEM
+          | extend BlockedUser=extract(@"for user:? ([^\s(]+)", 1, RenderedDescription)
+          | summarize BlockedLogons=count(), AffectedUsers=dcountif(BlockedUser, isnotempty(BlockedUser)), Users=make_set_if(BlockedUser, isnotempty(BlockedUser), 20), FirstEvent=min(TimeGenerated), LastEvent=max(TimeGenerated) by ComputerName
+          | join kind = inner
+              (
+                WVDAgentHealthStatus
+                | where tostring(split(_ResourceId, '/')[8]) =~ 'xHostPoolNamex'
+                | parse SessionHostResourceId with "/subscriptions/" VMsubscription "/resourceGroups/" VMresourceGroup "/providers/Microsoft.Compute/virtualMachines/" ComputerName
+                | extend ComputerName=tolower(ComputerName), HostPool=tostring(split(_ResourceId, '/')[8])
+                | summarize arg_max(TimeGenerated, VMresourceGroup, HostPool) by ComputerName
+                | project ComputerName, VMresourceGroup, HostPool
+              ) on ComputerName
+          | extend Users=strcat_array(Users, ', ')
+          | project LastEvent, ComputerName, HostPool, VMresourceGroup, AffectedUsers, BlockedLogons, Users, FirstEvent
+          '''
+          // Measure the count instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Maximum'
+          metricMeasureColumn: 'AffectedUsers'
+          dimensions: [
+            {
+              name: 'ComputerName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'VMresourceGroup'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'HostPool'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 2
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
+    // Users signed in but FSLogix loaded no profiles: FSLogix stopped, disabled or not applying, so users get
+    // local profiles. Only host pools that loaded at least one FSLogix profile in the last day are checked,
+    // so host pools that do not use profile containers (for example RemoteApp pools) never fire
+    name: '${AlertNamePrefix}-HP-VM-FSLgxProf-NotLoaded-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-VM-FSLogix Profile Not Loaded at Sign-in (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}2 or more different users signed in to a session host in xHostPoolNamex in the last half hour, but FSLogix loaded no profiles on that host. FSLogix is probably not running or not applying to users on that host, so they get a local profile: their usual settings and files are missing and changes are lost when they sign out. Users rarely report this as an error.\nMetric value: the number of different users who signed in without a profile being loaded. Open View query results for the user names.\nAction: on the host, check the FSLogix Apps Services service is running (Get-Service frxsvc) and that profile containers are still enabled: HKLM\\SOFTWARE\\FSLogix\\Profiles should have Enabled = 1 and a VHDLocations or CCDLocations value. Fix the cause, then ask the listed users to sign out and sign in again.\nInvestigate: recent Group Policy, Intune or image changes to FSLogix settings or to the FSLogix Profile Include List and Exclude List groups, and C:\\ProgramData\\FSLogix\\Logs\\Profile. If the FSLogix Service Stopped or Crashed alert fired for the same host, start there.\nDeliberately ignores: local accounts, single sign-ins, and host pools where FSLogix loaded no profiles in the last day (for example RemoteApp host pools without profile containers). Accounts that are excluded from FSLogix on purpose, such as admin accounts, can raise this alert if two of them sign in to the same host within half an hour.'
+    severity: 2
+    evaluationFrequency: 'PT15M'
+    windowSize: 'P1D'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          let PoolHosts = WVDAgentHealthStatus
+          | where tostring(split(_ResourceId, '/')[8]) =~ 'xHostPoolNamex'
+          | parse SessionHostResourceId with "/subscriptions/" VMsubscription "/resourceGroups/" VMresourceGroup "/providers/Microsoft.Compute/virtualMachines/" ComputerName
+          | extend ComputerName=tolower(ComputerName), HostPool=tostring(split(_ResourceId, '/')[8])
+          | summarize arg_max(TimeGenerated, VMresourceGroup, HostPool) by ComputerName
+          | project ComputerName, VMresourceGroup, HostPool;
+          let SignInEvents = Event
+          | where (EventLog == "Microsoft-Windows-TerminalServices-LocalSessionManager/Operational" and EventID == 21)
+              or (EventLog == "Microsoft-FSLogix-Apps/Operational" and EventID == 25)
+          | parse _ResourceId with "/subscriptions/" subscription "/resourcegroups/" ResourceGroup "/providers/microsoft.compute/virtualmachines/" ComputerName
+          | extend ComputerName=tolower(ComputerName)
+          | join kind = inner PoolHosts on ComputerName;
+          // The host pool uses FSLogix profile containers: at least one profile was loaded on its hosts in the last day
+          let PoolUsesFSLogix = toscalar(SignInEvents | where EventLog == "Microsoft-FSLogix-Apps/Operational" | count) > 0;
+          // Sign-ins 5 to 35 minutes ago, so the matching profile load has had time to arrive
+          let SignIns = SignInEvents
+          | where EventLog == "Microsoft-Windows-TerminalServices-LocalSessionManager/Operational"
+          | where TimeGenerated between (ago(35m) .. ago(5m))
+          | extend SignedInUser=tolower(extract(@"User: ([^\r\n]+?)\s+Session ID", 1, RenderedDescription))
+          // Local accounts (shown as COMPUTERNAME\user) are skipped
+          | where isnotempty(SignedInUser) and tostring(split(SignedInUser, "\\")[0]) != tolower(tostring(split(Computer, ".")[0]))
+          | summarize UsersSignedIn=dcount(SignedInUser), Users=make_set(SignedInUser, 20), LastSignIn=max(TimeGenerated) by ComputerName, HostPool, VMresourceGroup;
+          let ProfileLoads = SignInEvents
+          | where EventLog == "Microsoft-FSLogix-Apps/Operational"
+          | where TimeGenerated > ago(40m)
+          | summarize ProfileLoads=count() by ComputerName;
+          SignIns
+          | where PoolUsesFSLogix
+          | join kind = leftouter ProfileLoads on ComputerName
+          | where isnull(ProfileLoads) or ProfileLoads == 0
+          | extend Users=strcat_array(Users, ', ')
+          | project LastSignIn, ComputerName, HostPool, VMresourceGroup, UsersSignedIn, Users
+          '''
+          // Measure the count instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Maximum'
+          metricMeasureColumn: 'UsersSignedIn'
+          dimensions: [
+            {
+              name: 'ComputerName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'VMresourceGroup'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'HostPool'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 2
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
+    // The FSLogix Windows service (frxsvc, or frxccds for Cloud Cache) terminated unexpectedly: Service Control
+    // Manager events 7031 and 7034. A clean shutdown or restart never logs these
+    name: '${AlertNamePrefix}-HP-VM-FSLgxSvc-Crashed-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-VM-FSLogix Service Crashed (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}An FSLogix service crashed (terminated unexpectedly) on a session host in xHostPoolNamex. While the FSLogix Apps Services service is not running, users who sign in do not get their FSLogix profile: they get a local profile and lose any changes when they sign out.\nOpen View query results for the service name, the session host and the Windows error message.\nAction: Windows normally restarts the service automatically after a crash. Check it is running on the host (Get-Service frxsvc, and frxccds if Cloud Cache is used). Ask users who signed in to this host since the crash to sign out and sign in again once it is running. If it keeps crashing, turn on drain mode for the host and investigate before letting users back on.\nInvestigate: the Application event log around the crash time (Application Error events naming the faulting module), the FSLogix logs in C:\\ProgramData\\FSLogix\\Logs, whether FSLogix was recently upgraded (FSLogix Admin event 35 shows the installed version), and security or filter driver software installed or updated at the same time. If the FSLogix Profile Not Loaded at Sign-in alert also fired for this host, users were affected.\nNote: events logged just before a restart can arrive when the host next starts, so check the event time in the query results.'
+    severity: 1
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT15M'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          Event
+          | where EventLog == "System" and Source == "Service Control Manager" and EventID in (7031, 7034)
+          | where RenderedDescription has "FSLogix"
+          | parse _ResourceId with "/subscriptions/" subscription "/resourcegroups/" ResourceGroup "/providers/microsoft.compute/virtualmachines/" ComputerName
+          | extend ComputerName=tolower(ComputerName)
+          | extend ServiceName=coalesce(extract(@"^The (.+?) service terminated", 1, RenderedDescription), "FSLogix")
+          | summarize Crashes=count(), FirstEvent=min(TimeGenerated), LastEvent=max(TimeGenerated), Detail=take_any(substring(RenderedDescription, 0, 300)) by ComputerName, ServiceName
+          | join kind = inner
+              (
+                WVDAgentHealthStatus
+                | where tostring(split(_ResourceId, '/')[8]) =~ 'xHostPoolNamex'
+                | parse SessionHostResourceId with "/subscriptions/" VMsubscription "/resourceGroups/" VMresourceGroup "/providers/Microsoft.Compute/virtualMachines/" ComputerName
+                | extend ComputerName=tolower(ComputerName), HostPool=tostring(split(_ResourceId, '/')[8])
+                | summarize arg_max(TimeGenerated, VMresourceGroup, HostPool) by ComputerName
+                | project ComputerName, VMresourceGroup, HostPool
+              ) on ComputerName
+          | project LastEvent, ComputerName, HostPool, VMresourceGroup, ServiceName, Crashes, Detail, FirstEvent
+          '''
+          // Measure the count instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Maximum'
+          metricMeasureColumn: 'Crashes'
+          dimensions: [
+            {
+              name: 'ComputerName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'ServiceName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'VMresourceGroup'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'HostPool'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 1
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
+    // The FSLogix Windows service was stopped (Service Control Manager 7036) while the host stayed up. Windows
+    // logs the same event for every FSLogix service during a shutdown, so stops within 2 minutes of a shutdown
+    // event are ignored: on a production workspace all 751 FSLogix stops in 30 days were shutdowns. Events from
+    // a shutdown can arrive at the next start-up stamped with the start-up time, but they arrive together, so the
+    // 2 minute pairing still holds. Stops followed by a manual start (a restart) are ignored too
+    name: '${AlertNamePrefix}-HP-VM-FSLgxSvc-Stopped-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-VM-FSLogix Service Stopped (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}An FSLogix service on a session host in xHostPoolNamex was stopped while the host kept running, and has not been started again. While the FSLogix Apps Services service is stopped, users who sign in get a local profile instead of their FSLogix profile, and their changes are lost when they sign out.\nOpen View query results for the service name, the session host and the stop time.\nAction: start the service on the host (Start-Service frxsvc), then find out who or what stopped it. Ask users who signed in to the host while it was stopped to sign out and sign in again.\nInvestigate: the System event log around the stop time (Service Control Manager 7036 and 7040 events), software deployment or maintenance jobs, and FSLogix upgrades or reinstalls, which stop the service briefly and can raise this alert.\nDeliberately ignores: stops that are part of a shutdown or restart (a shutdown event within 2 minutes of the stop), and services that were started again. This is not the same as the FSLogix Profile Service Disabled alert, which is raised from an FSLogix Admin log event (ID 60) rather than from the state of the Windows service.'
+    severity: 2
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT30M'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          let ServiceEvents = Event
+          | where EventLog == "System" and Source == "Service Control Manager" and EventID == 7036
+          | where RenderedDescription has "FSLogix"
+          | parse _ResourceId with "/subscriptions/" subscription "/resourcegroups/" ResourceGroup "/providers/microsoft.compute/virtualmachines/" ComputerName
+          | extend ComputerName=tolower(ComputerName)
+          | extend ServiceName=coalesce(extract(@"^The (.+?) service entered", 1, RenderedDescription), "FSLogix")
+          | extend State=iff(RenderedDescription has "stopped", "Stopped", iff(RenderedDescription has "running", "Running", "Other"));
+          let ShutdownEvents = Event
+          | where EventLog == "System"
+          | where (Source == "User32" and EventID == 1074)
+              or (Source == "EventLog" and EventID == 6006)
+              or (Source == "Microsoft-Windows-Kernel-Power" and EventID == 109)
+              or (Source == "Microsoft-Windows-Kernel-General" and EventID == 13)
+          | parse _ResourceId with "/subscriptions/" subscription "/resourcegroups/" ResourceGroup "/providers/microsoft.compute/virtualmachines/" ComputerName
+          | extend ComputerName=tolower(ComputerName)
+          | project ComputerName, ShutdownTime=TimeGenerated;
+          let Starts = ServiceEvents
+          | where State == "Running"
+          | project ComputerName, ServiceName, StartTime=TimeGenerated;
+          // Stops 5 to 30 minutes old, so any shutdown events logged with them have had time to arrive
+          ServiceEvents
+          | where State == "Stopped"
+          | where TimeGenerated between (ago(30m) .. ago(5m))
+          | project ComputerName, ServiceName, StopTime=TimeGenerated
+          | join kind = leftouter ShutdownEvents on ComputerName
+          | summarize NearShutdown=countif(isnotnull(ShutdownTime) and abs(datetime_diff('second', ShutdownTime, StopTime)) <= 120) by ComputerName, ServiceName, StopTime
+          | where NearShutdown == 0
+          | join kind = leftouter Starts on ComputerName, ServiceName
+          | summarize StartedAgain=countif(isnotnull(StartTime) and StartTime > StopTime) by ComputerName, ServiceName, StopTime
+          | where StartedAgain == 0
+          | summarize Stops=count(), LastStop=max(StopTime) by ComputerName, ServiceName
+          | join kind = inner
+              (
+                WVDAgentHealthStatus
+                | where tostring(split(_ResourceId, '/')[8]) =~ 'xHostPoolNamex'
+                | parse SessionHostResourceId with "/subscriptions/" VMsubscription "/resourceGroups/" VMresourceGroup "/providers/Microsoft.Compute/virtualMachines/" ComputerName
+                | extend ComputerName=tolower(ComputerName), HostPool=tostring(split(_ResourceId, '/')[8])
+                | summarize arg_max(TimeGenerated, VMresourceGroup, HostPool) by ComputerName
+                | project ComputerName, VMresourceGroup, HostPool
+              ) on ComputerName
+          | project LastStop, ComputerName, HostPool, VMresourceGroup, ServiceName, Stops
+          '''
+          // Measure the count instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Maximum'
+          metricMeasureColumn: 'Stops'
+          dimensions: [
+            {
+              name: 'ComputerName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'ServiceName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'VMresourceGroup'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'HostPool'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 1
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
     name: '${AlertNamePrefix}-HP-VM-AvailMemLess-2GB-xHostPoolNamex'
     displayName: '${AlertNamePrefix}-HostPool-VM-Available Memory Less Than 2GB (xHostPoolNamex)'
     description: '${AlertDescriptionHeader}A session host in xHostPoolNamex has averaged 2 GB or less of available memory over the last 15 minutes. This can slow down every user on that host.\nMetric value: that 15 minute average, in MB. Session hosts that have reported for less than 10 minutes are ignored, so hosts that have just powered on do not raise this alert.\nAction: check which users and processes are using the memory (including disconnected sessions), and whether the host pool maximum sessions per host suits the VM size. One alert is raised per session host and stays open until memory recovers.'
@@ -1915,6 +2311,146 @@ var LogAlertsHostPool = [
           ]
           operator: 'GreaterThanOrEqual'
           threshold: 1
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
+    // vhdmp 129 (reset issued to a mounted virtual disk, such as an FSLogix profile or app attach image) and
+    // disk 153 (IO retried). On a production incident these started 35 minutes before FSLogix blocked any
+    // sign-ins. Across two workspaces (about 45 session hosts, 30 days) they appeared on no other day
+    name: '${AlertNamePrefix}-HP-VM-DiskIOTimeouts-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-VM-Disk IO Timeouts (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}A session host in xHostPoolNamex logged 3 or more disk IO timeout warnings in 15 minutes: vhdmp 129 (Windows reset a mounted virtual disk because IO to it stopped responding) or disk 153 (an IO to a disk had to be retried). vhdmp 129 is logged for virtual disks such as FSLogix profile and Office containers and app attach images, usually because the file share they are stored on stopped responding. This is often the first sign of a host about to stop signing users in: in a real incident it started 35 minutes before FSLogix blocked any sign-ins.\nMetric value: the number of IO timeout warnings in the last 15 minutes. Open View query results for the devices involved (for example Disk 7 or \\Device\\RaidPort2).\nAction: check whether users can still sign in to this host. If they cannot, or the FSLogix Profile Logon Blocked alerts fire, turn off Allow new sessions (drain mode), make sure another session host is running, and restart this host. If several hosts raise this alert at the same time, the cause is more likely the storage or the network path than the hosts.\nInvestigate: to find which profile disk a Disk number belongs to, run Get-Disk on the host while the disk is still attached: the Location column shows the VHD(X) path and therefore the user. On the storage account, check availability, latency and throttling for the same time (the storage alerts in this solution cover these), and compare Success E2E Latency with Success Server Latency: high end-to-end latency with normal server latency points at the host or network path (SMB, private endpoint, DNS), high server latency points at storage.\nNote: events logged just before a restart can arrive when the host next starts, so check the event times in the query results.'
+    severity: 2
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT15M'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          Event
+          | where EventLog == "System"
+          | where (Source =~ "vhdmp" and EventID == 129) or (Source =~ "disk" and EventID == 153)
+          | parse _ResourceId with "/subscriptions/" subscription "/resourcegroups/" ResourceGroup "/providers/microsoft.compute/virtualmachines/" ComputerName
+          | extend ComputerName=tolower(ComputerName)
+          | extend Device=iff(Source =~ "disk",
+              strcat("Disk ", extract(@"for Disk (\d+)", 1, RenderedDescription)),
+              coalesce(extract(@"(\\Device\\RaidPort\d+)", 1, ParameterXml), extract(@"(\\Device\\RaidPort\d+)", 1, RenderedDescription), "vhdmp"))
+          | summarize IOTimeouts=count(), VirtualDiskResets=countif(Source =~ "vhdmp"), DiskRetries=countif(Source =~ "disk"), Devices=make_set(Device, 10), FirstEvent=min(TimeGenerated), LastEvent=max(TimeGenerated) by ComputerName
+          | join kind = inner
+              (
+                WVDAgentHealthStatus
+                | where tostring(split(_ResourceId, '/')[8]) =~ 'xHostPoolNamex'
+                | parse SessionHostResourceId with "/subscriptions/" VMsubscription "/resourceGroups/" VMresourceGroup "/providers/Microsoft.Compute/virtualMachines/" ComputerName
+                | extend ComputerName=tolower(ComputerName), HostPool=tostring(split(_ResourceId, '/')[8])
+                | summarize arg_max(TimeGenerated, VMresourceGroup, HostPool) by ComputerName
+                | project ComputerName, VMresourceGroup, HostPool
+              ) on ComputerName
+          | extend Devices=strcat_array(Devices, ', ')
+          | project LastEvent, ComputerName, HostPool, VMresourceGroup, IOTimeouts, VirtualDiskResets, DiskRetries, Devices, FirstEvent
+          '''
+          // Measure the count instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Maximum'
+          metricMeasureColumn: 'IOTimeouts'
+          dimensions: [
+            {
+              name: 'ComputerName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'VMresourceGroup'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'HostPool'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 3
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+  }
+  {
+    // A stuck session host that AVD still reports as Available: 2 or more users whose connections reached it but
+    // never completed, in each of two back-to-back half hours. Connections never given a session host ('<>') and
+    // failures on 3 or more hosts at once (a pool-wide or service problem) are ignored. Across about 45 session
+    // hosts over 30 days this fired once outside two real incidents, on a test host
+    name: '${AlertNamePrefix}-HP-VM-UsrsCantConnect-xHostPoolNamex'
+    displayName: '${AlertNamePrefix}-HostPool-VM-Multiple Users Unable to Connect (xHostPoolNamex)'
+    description: '${AlertDescriptionHeader}2 or more different users failed to connect to the same session host in xHostPoolNamex in each of the last two half hours. Their connections were sent to this host but never completed, which usually means the host is running but stuck: sign-ins hang (for example on FSLogix, Group Policy or a profile disk) while Azure Virtual Desktop still reports the host as Available and keeps sending users to it.\nMetric value: the number of different users whose connections failed in the most recent half hour. Open View query results for the user names.\nAction: try signing in to the host, or check whether users already on it are working normally. If sign-ins hang, turn off Allow new sessions (drain mode), make sure another session host is running, ask the affected users to try again, and restart the host.\nInvestigate: look up the error codes for these users in WVDErrors (join on CorrelationId with WVDConnections), and check the host for FSLogix Profile Logon Blocked or Disk IO Timeouts alerts, Winlogon 6005 or 6006 warnings in the Application log, and long Group Policy processing. The FAQ entry Users cannot sign in to one session host at https://github.com/durrante/AVDMonitoringBaseline/blob/main/docs/FAQ.md has a timeline query.\nDeliberately ignores: connections that were never given a session host, and failures on 3 or more hosts at the same time, which point to a problem shared by the whole host pool (network, identity, storage, or the Azure Virtual Desktop service: check Service Health). Unlike the User-Connection Failed alert, which reports every failed connection, this alert only fires for repeated failures on one host.'
+    severity: 2
+    evaluationFrequency: 'PT15M'
+    windowSize: 'PT2H'
+    criteria: {
+      allOf: [
+        {
+          query: '''
+          let FailedConnections = WVDConnections
+          | where TimeGenerated > ago(90m)
+          | where tostring(split(_ResourceId, '/')[8]) =~ 'xHostPoolNamex'
+          | summarize Start=min(TimeGenerated), States=make_set(State),
+              SessionHostName=take_anyif(SessionHostName, isnotempty(SessionHostName) and SessionHostName != '<>'),
+              UserName=take_any(UserName), HostPool=take_any(tostring(split(_ResourceId, '/')[8]))
+              by CorrelationId
+          // Connections that started 10 to 70 minutes ago and never reached Connected. The 10 minutes allows
+          // for slow sign-ins and ingestion delay. Connections never given a session host are skipped
+          | where Start between (ago(70m) .. ago(10m))
+          | where isnotempty(SessionHostName)
+          | where not(set_has_element(States, 'Connected'))
+          | extend Period=iff(Start < ago(40m), 'Earlier', 'Latest');
+          let PerHost = FailedConnections
+          | summarize FailedUsers=dcountif(UserName, Period == 'Latest'), EarlierFailedUsers=dcountif(UserName, Period == 'Earlier'),
+              FailedConnectionCount=count(), Users=make_set(UserName, 20), HostPool=take_any(HostPool)
+              by SessionHostName;
+          // Three or more hosts failing at once points to a problem shared by the host pool, not one stuck host
+          let HostsFailing = toscalar(PerHost | where FailedUsers >= 2 | count);
+          PerHost
+          | where FailedUsers >= 2 and EarlierFailedUsers >= 2
+          | where HostsFailing < 3
+          | extend Users=strcat_array(Users, ', ')
+          | project SessionHostName, HostPool, FailedUsers, EarlierFailedUsers, FailedConnectionCount, Users
+          '''
+          // Measure the count instead of splitting by it: a dimension whose value changes at every check opens a new alert every time
+          timeAggregation: 'Maximum'
+          metricMeasureColumn: 'FailedUsers'
+          dimensions: [
+            {
+              name: 'SessionHostName'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+            {
+              name: 'HostPool'
+              operator: 'Include'
+              values: [
+                '*'
+              ]
+            }
+          ]
+          operator: 'GreaterThanOrEqual'
+          threshold: 2
           failingPeriods: {
             numberOfEvaluationPeriods: 1
             minFailingPeriodsToAlert: 1

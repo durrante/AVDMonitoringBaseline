@@ -4,6 +4,18 @@ For information on what's new please refer to the [Releases](https://github.com/
 
 To update your current deployment with the content from the latest release, please refer to the [Update to new release](Update-to-new-Release.md) page.
 
+## 2026-11-04 — v2.7.0 (this fork)
+
+- **Seven new alert rules for stuck session hosts and FSLogix**, built from a production incident in which a host's profile disk storage stopped responding and FSLogix blocked every sign-in for over three hours, while AVD reported the host as Available and no existing alert fired. Each was checked against 30 days of data from two production workspaces:
+  - **VM-FSLogix Profile Logon Blocked** (Sev2) / **for Multiple Users** (Sev1): FSLogix blocking sign-ins. With 2 or more users, the host is stuck.
+  - **VM-Disk IO Timeouts** (Sev2): profile disk IO timing out, the earliest warning, 35 minutes before FSLogix logged anything in the incident.
+  - **VM-Multiple Users Unable to Connect** (Sev2): a stuck session host, whatever the cause, without alerting on pool-wide or service problems.
+  - **VM-FSLogix Service Crashed** (Sev1) and **VM-FSLogix Service Stopped** (Sev2): host shutdowns and restarts never fire them.
+  - **VM-FSLogix Profile Not Loaded at Sign-in** (Sev2): users silently getting local profiles.
+- **Descriptions written for the engineer on call:** what is wrong, what to do now (drain, keep capacity, restart), and where to look, with a new [FAQ entry](FAQ.md#users-cannot-sign-in-to-one-session-host) containing a timeline query and an evidence checklist.
+- **Prerequisites:** the new alerts read the `System`, `Application` and LocalSessionManager event logs, which the standard AVD Insights data collection rule already collects.
+- Full details, including what each alert deliberately ignores, in the [change log](../patterns/avd/CHANGES.md).
+
 ## 2026-10-28 — v2.6.2 (this fork)
 
 - **Scaling plan alerts now say where to find who made the change, and when.** The Scaling Plan Disabled and Removed alert descriptions point to the scaling plan's Activity log, and a new [FAQ entry](FAQ.md#who-disabled-the-scaling-plan-and-when) has queries for the exact time and the person or account responsible.

@@ -18,6 +18,18 @@ The upstream AVD pattern appears to be abandoned. Deployment-blocking bugs such 
 
 A summary is below. Every change, with its rationale, is in [CHANGES.md](patterns/avd/CHANGES.md).
 
+### New alerts (v2.7.0): stuck session hosts and FSLogix
+
+Built from a real incident in which a session host's profile disk storage stopped responding. FSLogix then blocked every sign-in for over three hours, while Azure Virtual Desktop reported the host as Available, the FSLogix service stayed running and none of the existing alerts fired. Each alert was checked against 30 days of data from two production workspaces (about 45 session hosts). Each alert description tells the engineer what to do and where to look.
+
+| Alert | What it catches |
+|---|---|
+| VM-FSLogix Profile Logon Blocked (Sev2) / for Multiple Users (Sev1) | FSLogix blocking sign-ins on a session host. With 2 or more users, the host is stuck and needs draining and a restart |
+| VM-Disk IO Timeouts | Profile disk or other disk IO timing out (vhdmp 129, disk 153), the earliest warning of a host about to stop signing users in |
+| VM-Multiple Users Unable to Connect | A stuck session host that AVD still reports as Available, whatever the cause, without alerting on pool-wide or service problems |
+| VM-FSLogix Service Crashed / Stopped | The FSLogix service crashing, or being stopped while the host keeps running. Host restarts and hosts without FSLogix never fire |
+| VM-FSLogix Profile Not Loaded at Sign-in | Users signing in to local profiles because FSLogix is not running or not applying, which users rarely report |
+
 ### New alerts (v2.6.0)
 
 Each was designed to fire only when something is genuinely wrong, and to stay quiet during routine work such as maintenance, host replacement and autoscale. CHANGES.md lists what each one deliberately ignores.
@@ -87,6 +99,7 @@ An AVD deployment with AVD Insights configured per the AVD portal's Insights con
      - Performance counter `\Memory\Available Mbytes` into the `Perf` table (required by the redesigned Available Memory alerts)
      - Performance counter `\LogicalDisk(C:)\% Free Space` into the `Perf` table (local disk alerts)
      - Windows event logs `Microsoft-FSLogix-Apps/Operational` and `Microsoft-FSLogix-Apps/Admin` into the `Event` table (FSLogix alerts)
+     - Windows event logs `System` (all levels), `Application` (warnings and errors) and `Microsoft-Windows-TerminalServices-LocalSessionManager/Operational` into the `Event` table (v2.7.0 FSLogix, Disk IO Timeouts and service alerts). The standard AVD Insights data collection rule already collects these
 4. Storage, either Azure Files or Azure NetApp Files, for FSLogix profiles (optional)
 5. For the Autoscale Failures alert only: the **Autoscale logs for pooled host pools** category added to the host pool diagnostic settings (optional, populates `WVDAutoscaleEvaluationPooled`)
 
@@ -116,16 +129,22 @@ The full list of alert rules the solution deploys, all disabled by default. Some
 | AVD-HostPool-Scaling Plan Removed (hostpoolname) (1.) | 4 hours (3), fires once | Log Analytics | 1 hour | 1/hostpool | 🆕 New (v2.6.0) |
 | AVD-HostPool-VM-Agent Upgrade Failed or Stuck (hostpoolname) | (3) | Log Analytics | 1 hour | 1/hostpool | 🆕 New (v2.6.0) |
 | AVD-HostPool-VM-Available Memory Less Than nGB (hostpoolname) | 1gb (Sev1) / 2gb (Sev2) | Log Analytics | 5 min | 2/hostpool | ✏️ Changed |
+| AVD-HostPool-VM-Disk IO Timeouts (hostpoolname) (4.) | 3 in 15 min (2) | Log Analytics | 5 min | 1/hostpool | 🆕 New (v2.7.0) |
 | AVD-HostPool-VM-Drained and Idle over 24 Hours (hostpoolname) | (3) | Log Analytics | 1 hour | 1/hostpool | 🆕 New (v2.6.0) |
 | AVD-HostPool-VM-FSLogix Profile DiskCompactFailed (hostpoolname) | (2) | Log Analytics | 5 min | 1/hostpool | 🔧 Fixed |
 | AVD-HostPool-VM-FSLogix Profile FailedAttachVHD (hostpoolname) | (1) | Log Analytics | 5 min | 1/hostpool | 🔧 Fixed |
 | AVD-HostPool-VM-FSLogix Profile Less Than n% Free Space (hostpoolname) | 2% (1) / 5% (2) | Log Analytics | 5 min | 2/hostpool | 🔧 Fixed |
 | AVD-HostPool-VM-FSLogix Profile Failed due to Network Issue (hostpoolname) | (1) | Log Analytics | 5 min | 1/hostpool | 🔧 Fixed |
+| AVD-HostPool-VM-FSLogix Profile Logon Blocked (for Multiple Users) (hostpoolname) (4.) | 1 user (2) / 2+ users (1) | Log Analytics | 5 min | 2/hostpool | 🆕 New (v2.7.0) |
+| AVD-HostPool-VM-FSLogix Profile Not Loaded at Sign-in (hostpoolname) (4.) | 2+ users (2) | Log Analytics | 15 min | 1/hostpool | 🆕 New (v2.7.0) |
 | AVD-HostPool-VM-FSLogix Profile Service Disabled (hostpoolname) | (1) | Log Analytics | 5 min | 1/hostpool | 🔧 Fixed |
 | AVD-HostPool-VM-FSLogix Profile Disk Attached to another VM (hostpoolname) | (2) | Log Analytics | 5 min | 1/hostpool | ✏️ Changed |
+| AVD-HostPool-VM-FSLogix Service Crashed (hostpoolname) (4.) | (1) | Log Analytics | 5 min | 1/hostpool | 🆕 New (v2.7.0) |
+| AVD-HostPool-VM-FSLogix Service Stopped (hostpoolname) (4.) | (2) | Log Analytics | 5 min | 1/hostpool | 🆕 New (v2.7.0) |
 | AVD-HostPool-VM-Health Check Failure (hostpoolname) | (1) | Log Analytics | 5 min | 1/hostpool | 🔧 Fixed |
 | AVD-HostPool-VM-High CPU nn Percent (hostpoolname) | 95 (1) / 85 (2) | Metric Alerts | 5 min (1) / 30 min (2) | 2/hostpool | ✏️ Changed |
 | AVD-HostPool-VM-Local Disk Free Space n% (hostpoolname) | 5 (1) / 10 (2) | Log Analytics | 15 min | 2/hostpool | ✏️ Changed |
+| AVD-HostPool-VM-Multiple Users Unable to Connect (hostpoolname) | 2+ users in 2 half hours (2) | Log Analytics | 15 min | 1/hostpool | 🆕 New (v2.7.0) |
 | AVD-HostPool-VM-Personal Assigned Not Healthy (hostpoolname) | Any are Sev 1 | Log Analytics | 5 min | 1/hostpool | |
 | AVD-HostPool-VM-OS Disk Bandwidth Avg n% (hostpoolname) | 95 (1) / 85 (2) | Metric Alerts | 5 min | 2/hostpool | |
 | AVD-HostPool-VM-User Connection Failed (hostpoolname) | Any are Sev 3 | Log Analytics | 15 min | 1/hostpool | |
@@ -147,6 +166,7 @@ The full list of alert rules the solution deploys, all disabled by default. Some
 1. Alert based on associated Automation Account / Runbook
 2. See ['How to create an alert if a file share is throttled'](https://docs.microsoft.com/azure/storage/files/storage-troubleshooting-files-performance#how-to-create-an-alert-if-a-file-share-is-throttled). Both Standard and Premium values are incorporated into the alert rule. Service Health alert severity cannot be changed from 'Verbose'.
 3. Requires the **Autoscale logs for pooled host pools** category in the host pool diagnostic settings (pooled host pools only). Without it the alert never fires
+4. Reads Windows event logs collected by the standard AVD Insights data collection rule: `System`, `Application`, the FSLogix logs and the `LocalSessionManager/Operational` log (see [Prerequisites](#-prerequisites-and-required-data))
 
 ## 📚 Documentation
 

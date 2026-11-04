@@ -2,7 +2,77 @@
 
 This fork of [Azure/azure-monitor-baseline-alerts](https://github.com/Azure/azure-monitor-baseline-alerts) (`patterns/avd`) is maintained independently because upstream development of the AVD pattern has gone stale. This document lists every functional change from the upstream baseline (upstream `main` as of commit `ba0266b3`, template v2.2.1) so users migrating from the original solution can see exactly what differs.
 
-**Current version: v2.6.2** (2026-10-28)
+**Current version: v2.7.0** (2026-11-04)
+
+---
+
+## v2.7.0 (2026-11-04) — this fork
+
+Seven new host pool alert rules for stuck session hosts and FSLogix problems. They come from a production incident: a session host's profile disk storage stopped responding, and FSLogix then blocked every new sign-in for over three hours. Azure Virtual Desktop reported the host as **Available** throughout, every agent health check passed, the FSLogix service stayed running, and autoscale added no capacity because failed sign-ins do not count as sessions. None of the existing alerts fired.
+
+Every alert below was checked against 30 days of data from two production workspaces: a small host pool with one always-on session host (which had the incident, plus a smaller one three weeks earlier), and an estate of about 43 session hosts with 500 to 700 sign-ins a day. Like every alert in this solution, they deploy **disabled**. Each description tells the engineer what is wrong, what to do now and where to look, and several link to the new FAQ entry [Users cannot sign in to one session host](../../docs/FAQ.md#users-cannot-sign-in-to-one-session-host).
+
+### 1. New: VM-FSLogix Profile Logon Blocked (Sev2) / for Multiple Users (Sev1)
+
+**Catches:** FSLogix blocking a sign-in. The user waits at "Please wait for the FSLogix Apps Services" and the sign-in fails. With 2 or more different users on one host within 30 minutes (Sev1), the host is stuck and needs draining and a restart.
+
+**How:** FSLogix Operational event 26 "Failed to acquired logon lock" (FSLogix's own spelling; the query also matches the corrected wording), which FSLogix logs after waiting 60 seconds, or Winlogon event 6004 "frxsvc failed a critical notification event". The user name is read from the message text, because the event's `UserName` column is always `NT AUTHORITY\SYSTEM`. The blocked sign-in count (Sev2) or the number of different users (Sev1) is the alert's metric value, and the user names are in the query results.
+
+**Deliberately ignores:** the "Failed to acquire mutex" and "check session lock" errors. A single pair of them is logged on most days on healthy hosts (on 28 of 30 days, on up to 20 hosts a day, in the larger estate), so alerting on them would be constant noise. In 30 days the Sev2 alert fired once outside the two incidents, for one user. The Sev1 alert fired only during the main incident.
+
+### 2. New: VM-Disk IO Timeouts (Sev2)
+
+**Catches:** disk IO on a session host timing out. `vhdmp` event 129 means Windows reset a mounted virtual disk (FSLogix profile or Office container, app attach image) because IO to it stopped responding, usually because the file share behind it did. `disk` event 153 means an IO had to be retried. In the incident these started at the same minute as the first failed sign-ins, 35 minutes before FSLogix logged anything, so this is the earliest warning.
+
+**How:** 3 or more of these warnings on one host in 15 minutes. The devices involved (for example `Disk 7` or `\Device\RaidPort2`) are in the query results, and the description explains how to match a disk number to a user's VHD(X) with `Get-Disk`.
+
+**Deliberately ignores:** isolated warnings. In 30 days across both workspaces, these events appeared on no other day (one single event in the larger estate).
+
+### 3. New: VM-Multiple Users Unable to Connect (Sev2)
+
+**Catches:** a stuck session host, whatever the cause: FSLogix, Group Policy, a profile disk, or anything else that hangs sign-ins on one host while AVD reports it as Available.
+
+**How:** from the host pool's connection logs. A connection that reached a session host but never reached the `Connected` state counts as failed. The alert fires when 2 or more different users failed on the same host in each of two back-to-back half hours, so it needs about an hour of failures. It caught both incidents.
+
+**Deliberately ignores:** connections never given a session host (logged as `<>`), and failures on 3 or more hosts in the pool at once, which point to a problem shared by the whole host pool (network, identity, storage, or the AVD service, which Service Health covers). A simpler version, without these exclusions, raised about 5 alerts a month in the larger estate plus a burst across 13 hosts during a short service-wide problem. With them, it fired once in 30 days outside the incidents, on a test host. It complements the existing **User-Connection Failed** alert (Sev3), which reports every failed connection.
+
+### 4. New: VM-FSLogix Service Crashed (Sev1)
+
+**Catches:** the FSLogix service (`frxsvc`, or `frxccds` for Cloud Cache) terminating unexpectedly: Service Control Manager events 7031 and 7034. While it is down, users who sign in get a local profile.
+
+**Deliberately ignores:** clean shutdowns and restarts, which never log these events. Neither workspace had a crash in 30 days, so this alert is designed from the event definitions rather than observed data. It has not been seen to fire.
+
+### 5. New: VM-FSLogix Service Stopped (Sev2)
+
+**Catches:** the FSLogix service being stopped while the host keeps running, for example by an admin or a script, and not started again.
+
+**How:** Service Control Manager event 7036 "entered the stopped state" for an FSLogix service, with no shutdown event (User32 1074, EventLog 6006, Kernel-Power 109 or Kernel-General 13) within 2 minutes, and no later "running" event for the same service.
+
+**Deliberately ignores:** shutdowns and restarts. Windows logs this event for every FSLogix service during a normal shutdown: across both workspaces, all 764 FSLogix stops in 30 days were within 2 minutes of a shutdown event, so the alert would not have fired once. Events logged during a shutdown can arrive at the next start-up, stamped with the start-up time rather than the time they happened (seen on the smaller workspace), but they arrive together with the shutdown events, so the 2 minute pairing still holds. Windows does not log a "running" event when FSLogix starts at boot, so the alert does not rely on one.
+
+**Requires:** System event log events at all levels, which the standard AVD Insights data collection rule collects.
+
+**Not to be confused with** the existing **FSLogix Profile Service Disabled** alert, which reads an FSLogix Admin log event (ID 60) rather than the state of the Windows service.
+
+### 6. New: VM-FSLogix Profile Not Loaded at Sign-in (Sev2)
+
+**Catches:** users signing in without an FSLogix profile because FSLogix is stopped, disabled or no longer applying to them, for example after a Group Policy, Intune or image change. Users get a local profile, their settings and files are missing and their changes are lost. They rarely report it as an error, and none of the other alerts see it.
+
+**How:** 2 or more different users signed in (LocalSessionManager event 21) to a host in a half hour, and FSLogix logged no profile load (FSLogix Operational event 25) on that host.
+
+**Deliberately ignores:** local accounts, single sign-ins, and host pools where FSLogix loaded no profiles in the last day, so host pools that do not use profile containers (such as RemoteApp pools) never fire. Without that check, a RemoteApp pool in the larger estate would have fired constantly. In 30 days it fired once, on a test host where two admin accounts that are excluded from FSLogix signed in within half an hour.
+
+**Known limit:** if a host pool has had no sign-ins at all for a day (for example over a quiet weekend) and FSLogix is broken on every host, the pool check cannot pass, so the alert stays silent until one profile loads somewhere in the pool.
+
+### 7. New FAQ entry: Users cannot sign in to one session host
+
+What the new alerts show and in what order, what to do first (drain, keep capacity, restart), a timeline query that lines up connections with the host's events, the events to look for, an evidence collection script to run before restarting, and how to read the storage account metrics. The planned maintenance FAQ now notes that an FSLogix upgrade on a running host can raise FSLogix Service Stopped.
+
+### Upgrade notes
+
+- Redeploy to add the new alert rules. Existing alert rules and the runbooks are unchanged apart from the version in the description header.
+- The new alerts read the `System`, `Application` and `Microsoft-Windows-TerminalServices-LocalSessionManager/Operational` event logs, as well as the FSLogix logs. The standard AVD Insights data collection rule collects all of these. If you use a custom data collection rule, check that it collects `System` at all levels (for FSLogix Service Stopped), `Application` warnings (for Winlogon 6004) and the LocalSessionManager log (for FSLogix Profile Not Loaded at Sign-in).
+- Crashed, Stopped and Not Loaded at Sign-in have only been checked for staying quiet, because neither workspace had a real case. To see them fire, stop or end `frxsvc` on a test session host, then sign in as two users while it is stopped.
 
 ---
 

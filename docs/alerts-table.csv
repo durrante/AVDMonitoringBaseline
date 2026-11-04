@@ -8,16 +8,22 @@ AVD-HostPool-Scaling Plan Disabled over n Hours (hostpoolname),4 (3) / 24 (2),Lo
 AVD-HostPool-Scaling Plan Removed (hostpoolname),4 hours (3),Log Analytics,1 hour,1/hostpool,New in v2.6.0: based on associated Automation Account / Runbook; one-time change notification
 AVD-HostPool-VM-Agent Upgrade Failed or Stuck (hostpoolname),(3),Log Analytics,1 hour,1/hostpool,New in v2.6.0
 AVD-HostPool-VM-Available Memory Less Than nGB (hostpoolname),1gb (Sev1) / 2gb (Sev2),Log Analytics,5 min,2/hostpool,Changed in this fork: converted from metric to KQL alert to avoid power-on false positives (v2.3.0); v2.6.1 raises one alert per session host with available MB as the metric value
+AVD-HostPool-VM-Disk IO Timeouts (hostpoolname),3 in 15 min (2),Log Analytics,5 min,1/hostpool,New in v2.7.0: vhdmp 129 and disk 153 warnings from the System event log (collected by the standard AVD Insights data collection rule)
 AVD-HostPool-VM-Drained and Idle over 24 Hours (hostpoolname),(3),Log Analytics,1 hour,1/hostpool,New in v2.6.0
 AVD-HostPool-VM-FSLogix Profile DiskCompactFailed (hostpoolname),(2),Log Analytics,5 min,1/hostpool,Fixed in this fork: corrected join so results are filtered to the correct host pool
 AVD-HostPool-VM-FSLogix Profile FailedAttachVHD (hostpoolname),(1),Log Analytics,5 min,1/hostpool,Fixed in this fork: corrected join so results are filtered to the correct host pool
 AVD-HostPool-VM-FSLogix Profile Less Than n% Free Space (hostpoolname),2% (1) / 5% (2),Log Analytics,5 min,2/hostpool,Fixed in this fork: corrected join so results are filtered to the correct host pool
 AVD-HostPool-VM-FSLogix Profile Failed due to Network Issue (hostpoolname),(1),Log Analytics,5 min,1/hostpool,Fixed in this fork: corrected join so results are filtered to the correct host pool
+AVD-HostPool-VM-FSLogix Profile Logon Blocked (for Multiple Users) (hostpoolname),1 user (2) / 2+ users (1),Log Analytics,5 min,2/hostpool,New in v2.7.0: FSLogix logon lock timeouts and Winlogon 6004 for frxsvc; the everyday mutex and check session lock errors are ignored
+AVD-HostPool-VM-FSLogix Profile Not Loaded at Sign-in (hostpoolname),2+ users (2),Log Analytics,15 min,1/hostpool,New in v2.7.0: sign-ins with no FSLogix profile load; only host pools that use FSLogix profile containers; local accounts ignored
 AVD-HostPool-VM-FSLogix Profile Service Disabled (hostpoolname),(1),Log Analytics,5 min,1/hostpool,Fixed in this fork: corrected join so results are filtered to the correct host pool
 AVD-HostPool-VM-FSLogix Profile Disk Attached to another VM (hostpoolname),(2),Log Analytics,5 min,1/hostpool,Changed in this fork: surfaces UserName and ProfilePath dimensions; corrected join so results are filtered to the correct host pool
+AVD-HostPool-VM-FSLogix Service Crashed (hostpoolname),(1),Log Analytics,5 min,1/hostpool,New in v2.7.0: Service Control Manager 7031 and 7034 for the FSLogix services
+AVD-HostPool-VM-FSLogix Service Stopped (hostpoolname),(2),Log Analytics,5 min,1/hostpool,New in v2.7.0: FSLogix service stopped while the host stays up; shutdowns and restarts are ignored. Needs System log events at all levels
 AVD-HostPool-VM-Health Check Failure (hostpoolname),(1),Log Analytics,5 min,1/hostpool,Fixed in this fork: maps health checks 11 (TURNRelay) and 19 (AADJoined) which were previously ignored
 AVD-HostPool-VM-High CPU nn Percent (hostpoolname),95 (1) / 85 (2),Metric Alerts,5 min (Sev1) / 30 min (Sev2),2/hostpool,Changed in this fork: 85% alert evaluates every 30 min over 1 hour
 AVD-HostPool-VM-Local Disk Free Space n% (hostpoolname),5 (1) / 10 (2),Log Analytics,15 min,2/hostpool,Changed in this fork: v2.6.1 raises one alert per session host with free space percent as the metric value
+AVD-HostPool-VM-Multiple Users Unable to Connect (hostpoolname),2+ users in 2 half hours (2),Log Analytics,15 min,1/hostpool,New in v2.7.0: a stuck session host; failures on 3 or more hosts at once (pool-wide or service problems) are ignored
 AVD-HostPool-VM-Personal Assigned Not Healthy (hostpoolname),Any are Sev 1,Log Analytics,5 min,1/hostpool,
 AVD-HostPool-VM-OS Disk Bandwidth Avg n% (hostpoolname),95 (1) / 85 (2),Metric Alerts,5 min,2/hostpool,
 AVD-HostPool-VM-User Connection Failed (hostpoolname),Any are Sev 3,Log Analytics,15 min,1/hostpool,

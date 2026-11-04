@@ -109,6 +109,80 @@ Use an [alert processing rule](https://learn.microsoft.com/azure/azure-monitor/a
 - **Scaling Plan Disabled over 4 Hours** gives most maintenance time to finish before it fires, and **Scaling Plan Removed** waits 4 hours so a plan removed and re-added during the work never fires.
 - **Autoscale Failures** only fires when every evaluation in an hour fails. During session host replacement, tag outgoing hosts with the scaling plan's exclusion tag so autoscale does not try to start or stop VMs that are being deleted.
 - **Drained and Idle over 24 Hours** ignores drained hosts that still have users, and drained hosts that are switched off.
+- **FSLogix Service Stopped** ignores host shutdowns and restarts, and a service that is started again. Upgrading or reinstalling FSLogix on a running host stops the service, so it can fire during that work.
+
+## Users cannot sign in to one session host
+
+A session host can get stuck so that every new sign-in hangs or fails, while Azure Virtual Desktop still reports it as **Available** and keeps sending users to it. The FSLogix service stays running, the agent health checks pass, and autoscale does not add capacity because failed sign-ins do not count as sessions. In a host pool with one powered-on host, that is a full outage.
+
+**What the alerts show.** In the incident these alerts were built from, the profile disk storage stopped responding and the alerts would have fired in this order:
+
+1. **VM-Disk IO Timeouts** (Sev2): vhdmp 129 and disk 153 warnings, at the same time as the first failed sign-ins.
+2. **VM-FSLogix Profile Logon Blocked** (Sev2), about 35 minutes later, when FSLogix gave up waiting for the first user's logon lock.
+3. **VM-Multiple Users Unable to Connect** (Sev2) and **VM-FSLogix Profile Logon Blocked for Multiple Users** (Sev1), within the next 15 minutes.
+
+**What to do first:**
+
+1. Turn off **Allow new sessions** (drain mode) on the host, so no more users are sent to it.
+2. Make sure another session host is running and available. Start one if needed.
+3. Ask affected users to sign out and sign in again, so they land on a healthy host.
+4. Collect evidence if you can (below), then restart the host. A stuck host can hang while shutting down: if it has not restarted after 10 minutes, restart it from the Azure portal.
+5. Turn drain mode off once users can sign in to the host again.
+
+**Timeline query.** Run this in the Log Analytics workspace, with the session host's computer name and a time range covering the problem. It lists each connection (a connection showing `Started,Completed` without `Connected` failed) alongside the host's warning and error events in 5 minute buckets, so you can see what started first.
+
+```kusto
+let HostName = "vm-avd-01";   // the session host's computer name, without the domain
+let StartTime = ago(6h);
+let EndTime = now();
+let Connections = WVDConnections
+| where TimeGenerated between (StartTime .. EndTime)
+| summarize States = strcat_array(make_set(State), ","), Start = min(TimeGenerated),
+    Host = take_anyif(tolower(tostring(split(SessionHostName, ".")[0])), isnotempty(SessionHostName)),
+    User = take_any(UserName)
+    by CorrelationId
+| where Host == HostName
+| project Time = Start, Kind = "Connection", Detail = strcat(User, " | ", States);
+let HostEvents = Event
+| where TimeGenerated between (StartTime .. EndTime)
+| where tolower(tostring(split(Computer, ".")[0])) == HostName
+| where EventLevelName != "Information"
+    or (Source == "Microsoft-FSLogix-Apps" and EventID == 25)
+    or (Source == "User32" and EventID == 1074)
+| summarize Count = count(), Sample = take_any(substring(RenderedDescription, 0, 150))
+    by Source, EventID, Time = bin(TimeGenerated, 5m)
+| project Time, Kind = "Event", Detail = strcat(Source, " ", EventID, " x", Count, " | ", Sample);
+union Connections, HostEvents
+| order by Time asc
+```
+
+What to look for:
+
+- **vhdmp 129** (reset to a virtual disk) and **disk 153** (IO retried): disk IO stopped responding. Usually the first sign.
+- **RemoteConnectionManager 20498** ("taken too long to complete the client connection"): sign-ins are hanging.
+- **Winlogon 6005, 6006 and 6004** naming `frxsvc`: FSLogix is taking too long to handle, or failing, sign-ins.
+- **FSLogix 26** "Failed to acquired logon lock … (Elapsed time: 60000)": a sign-in blocked for 60 seconds. A single "Failed to acquire mutex" or "check session lock" error on its own is normal.
+- **FSLogix 25** (profile load) stopping: no one has signed in successfully since.
+- **Kernel-Power 41** and **EventLog 6008** after the restart: the host did not shut down cleanly, which fits stuck IO.
+
+**Evidence to collect before the restart.** On the host, in an elevated PowerShell session. If a command hangs, skip it: the host is stuck on disk IO.
+
+```powershell
+$Out = "C:\Temp\AVD-Evidence-$(Get-Date -Format yyyyMMdd-HHmm)"
+New-Item -ItemType Directory -Path $Out -Force | Out-Null
+Copy-Item "C:\ProgramData\FSLogix\Logs" "$Out\FSLogix-Logs" -Recurse -Force
+foreach ($Log in "System", "Application", "Microsoft-FSLogix-Apps/Operational", "Microsoft-FSLogix-Apps/Admin") {
+    wevtutil epl $Log "$Out\$($Log -replace '[/ ]', '-').evtx"
+}
+# The Location column shows the VHD(X) path of each attached profile disk, so Disk numbers in
+# vhdmp and disk events can be matched to a user
+Get-Disk | Select-Object Number, FriendlyName, Location, OperationalStatus, Size |
+    Format-Table -AutoSize | Out-File "$Out\Disks.txt"
+Get-Service frxsvc, frxccds -ErrorAction SilentlyContinue | Out-File "$Out\FSLogix-Services.txt"
+Compress-Archive -Path "$Out\*" -DestinationPath "$Out.zip" -Force
+```
+
+**Storage checks.** On the storage account holding the profiles, look at the metrics for the time the problem started: Availability, Success E2E Latency against Success Server Latency, and Transactions split by ResponseType. High end-to-end latency with normal server latency points at the host or the network path (SMB, private endpoint, DNS, firewall). High server latency, throttling or availability drops point at storage. If only one host was affected and storage looks normal, the cause is most likely on that host: the virtual disk or SMB client stack, one attached profile disk, or a third-party file system filter driver (for example security or DLP software).
 
 ## Why are there four Service Health alerts instead of one?
 
