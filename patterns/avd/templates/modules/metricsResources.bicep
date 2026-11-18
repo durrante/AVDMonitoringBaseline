@@ -46,9 +46,12 @@ module actionGroup '../carml/1.3.0/Microsoft.Insights/actionGroups/deploy.bicep'
 // The Action Group every alert references: the existing one if supplied, otherwise the newly created one
 var ActionGroupId = empty(ExistingActionGroupResourceId) ? actionGroup!.outputs.resourceId : ExistingActionGroupResourceId
 
+// Deployment names below replace spaces and '@' in host pool names with '-'. Host pools created outside the
+// portal can have them, and deployment names only allow letters, digits, '-', '.' and '_'.
+
 // If VM and Host Pools mapped - loop through each object in Host Pool Info which will have a single HP per VM RG
 module metricAlertsVms 'metricAlertsVms.bicep' = [for i in range(0, length(HostPoolInfo)): if(!AllResourcesSameRG) {
-  name: !AllResourcesSameRG ? 'lnk_VMMtrcAlrts_m_${split(HostPoolInfo[i].colHostPoolName, '/')[8]}' : 'lnk_VMMtrcAlrts_m_NA'
+  name: !AllResourcesSameRG ? 'lnk_VMMtrcAlrts_m_${replace(replace(split(HostPoolInfo[i].colHostPoolName, '/')[8], ' ', '-'), '@', '-')}' : 'lnk_VMMtrcAlrts_m_NA'
   params: {
     HostPoolName: !AllResourcesSameRG ? split(HostPoolInfo[i].colHostPoolName, '/')[8] : 'none'
     Environment: Environment
@@ -62,7 +65,7 @@ module metricAlertsVms 'metricAlertsVms.bicep' = [for i in range(0, length(HostP
 }]
 // If all resources in same RG, loop through Host Pools
 module metricAlertsVmsSingleRG 'metricAlertsVms.bicep' = [for i in range(0, length(HostPools)): if(AllResourcesSameRG) {
-  name: 'lnk_VMMtrcAlrts_s_${split(HostPools[i], '/')[8]}'
+  name: 'lnk_VMMtrcAlrts_s_${replace(replace(split(HostPools[i], '/')[8], ' ', '-'), '@', '-')}'
   params: {
     Environment: Environment
     HostPoolName: split(HostPools[i], '/')[8]
@@ -137,7 +140,7 @@ module logAlertStorage '../carml/1.3.0/Microsoft.Insights/scheduledQueryRules/de
 }]
 
 module logAlertHostPoolQueriesMapped 'hostPoolAlerts.bicep' = [for hostpool in HostPoolInfo: if(!AllResourcesSameRG) {
-  name: 'lnk_HPAlrts-${split(hostpool.colHostPoolName, '/')[8]}'
+  name: 'lnk_HPAlrts-${replace(replace(split(hostpool.colHostPoolName, '/')[8], ' ', '-'), '@', '-')}'
   params: {
     AutoMitigate: AutoResolveAlert
     ActionGroupId: ActionGroupId
@@ -151,7 +154,7 @@ module logAlertHostPoolQueriesMapped 'hostPoolAlerts.bicep' = [for hostpool in H
 }]
 
 module logAlertHostPoolQueriesSingleRG 'hostPoolAlerts.bicep' = [for hostpool in HostPools: if(AllResourcesSameRG) {
-  name: 'lnk_HPAlrts-${split(hostpool, '/')[8]}'
+  name: 'lnk_HPAlrts-${replace(replace(split(hostpool, '/')[8], ' ', '-'), '@', '-')}'
   params: {
     AutoMitigate: AutoResolveAlert
     ActionGroupId: ActionGroupId

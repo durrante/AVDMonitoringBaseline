@@ -10,8 +10,12 @@ param Tags object
 // Help ensure entire deployment name is under 64 characters
 var HostPoolResourceName = length(HostPoolName) < 20 ? HostPoolName : skip(HostPoolName, length(HostPoolName)-20)
 
+// Host pool names created outside the portal can contain spaces and '@', which deployment names do not allow.
+// Only the deployment name is cleaned: alert rule names may contain spaces, and the queries must use the real name.
+var HostPoolDeploymentName = replace(replace(HostPoolResourceName, ' ', '-'), '@', '-')
+
 module logAlertHostPoolQueries '../carml/1.3.0/Microsoft.Insights/scheduledQueryRules/deploy.bicep' = [for i in range(0, length(LogAlertsHostPool)): {
-  name: 'c_${replace(LogAlertsHostPool[i].name, 'xHostPoolNamex', HostPoolResourceName)}-${Environment}'
+  name: 'c_${replace(LogAlertsHostPool[i].name, 'xHostPoolNamex', HostPoolDeploymentName)}-${Environment}'
   params: {
     enableDefaultTelemetry: false
     name: '${replace(LogAlertsHostPool[i].name, 'xHostPoolNamex', HostPoolResourceName)}-${Environment}'

@@ -2,7 +2,29 @@
 
 This fork of [Azure/azure-monitor-baseline-alerts](https://github.com/Azure/azure-monitor-baseline-alerts) (`patterns/avd`) is maintained independently because upstream development of the AVD pattern has gone stale. This document lists every functional change from the upstream baseline (upstream `main` as of commit `ba0266b3`, template v2.2.1) so users migrating from the original solution can see exactly what differs.
 
-**Current version: v2.7.0** (2026-11-04)
+**Current version: v2.7.1** (2026-11-18)
+
+---
+
+## v2.7.1 (2026-11-18) — this fork
+
+### 1. Fix: deployment fails when a host pool name contains a space ([#8](https://github.com/durrante/AVDMonitoringBaseline/issues/8))
+
+The portal only allows letters, numbers, underscores, periods and hyphens in new host pool names. The Azure Virtual Desktop API also allows spaces and `@`, so host pools created with PowerShell, the Azure CLI, ARM, Terraform or older versions of the portal can have them, and host pools cannot be renamed. The template built Azure deployment names from the host pool name, and deployment names only allow letters, digits, `-`, `.` and `_`, so the deployment failed with `InvalidDeployment` (for example `'lnk_HPAlrts-KTMC Desktop' has these invalid characters: ' '`).
+
+Deployment names now replace spaces and `@` in host pool names with `-`. Only the deployment names change:
+
+- Alert rule names keep the real host pool name. Alert rule names can contain spaces, as the existing metric alert names already do.
+- The alert queries keep the real host pool name. Log Analytics stores it unchanged in `_ResourceId` (checked with a test host pool named `test pool`), so the queries match it.
+- Host pool names without these characters produce exactly the same names as before, so redeploying does not create duplicate alert rules.
+
+### 2. Fix: resource group names with parentheses
+
+Resource group names can contain `(` and `)`, which deployment names do not allow. The role assignment deployments for the session host, Log Analytics and storage account resource groups now replace them with `-`.
+
+### Upgrade notes
+
+Only needed if a deployment failed because of a host pool or resource group name. Otherwise the only change is the version in the description header.
 
 ---
 

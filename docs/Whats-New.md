@@ -4,6 +4,12 @@ For information on what's new please refer to the [Releases](https://github.com/
 
 To update your current deployment with the content from the latest release, please refer to the [Update to new release](Update-to-new-Release.md) page.
 
+## 2026-11-18 — v2.7.1 (this fork)
+
+- **Host pools with a space in the name now deploy** ([#8](https://github.com/durrante/AVDMonitoringBaseline/issues/8)). The portal no longer allows spaces in new host pool names, but host pools created with PowerShell, the CLI, ARM or older versions of the portal can have them, and the deployment failed with `InvalidDeployment`. Resource group names with parentheses are fixed the same way.
+- Alert rule names and queries are unchanged, so redeploying does not create duplicate alert rules.
+- Full details in the [change log](../patterns/avd/CHANGES.md).
+
 ## 2026-11-04 — v2.7.0 (this fork)
 
 - **Seven new alert rules for stuck session hosts and FSLogix**, built from a production incident in which a host's profile disk storage stopped responding and FSLogix blocked every sign-in for over three hours, while AVD reported the host as Available and no existing alert fired. Each was checked against 30 days of data from two production workspaces:

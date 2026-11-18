@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "2265762534845779154"
+      "templateHash": "1705812063550981337"
     }
   },
   "parameters": {
@@ -176,7 +176,7 @@
       }
     ],
     "ActionGroupName": "[format('ag-avdmetrics-{0}-{1}-{2}', parameters('Environment'), parameters('Location'), uniqueString(subscription().displayName))]",
-    "AlertDescriptionHeader": "[if(empty(parameters('CustomerName')), 'Automated AVD Alert Deployment Solution (v2.7.0)\n', format('Customer: {0}\nAutomated AVD Alert Deployment Solution (v2.7.0)\n', parameters('CustomerName')))]",
+    "AlertDescriptionHeader": "[if(empty(parameters('CustomerName')), 'Automated AVD Alert Deployment Solution (v2.7.1)\n', format('Customer: {0}\nAutomated AVD Alert Deployment Solution (v2.7.1)\n', parameters('CustomerName')))]",
     "AutomationAccountName": "[format('aa-avdmetrics-{0}-{1}-{2}', parameters('Environment'), parameters('Location'), parameters('AlertNamePrefix'))]",
     "CloudEnvironment": "[environment().name]",
     "ResourceGroupCreate": "[if(equals(parameters('ResourceGroupStatus'), 'New'), true(), false())]",
@@ -5783,7 +5783,7 @@
       "condition": "[not(parameters('AllResourcesSameRG'))]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
-      "name": "[format('c_DsktpRead_{0}', split(parameters('HostPoolInfo')[copyIndex()].colVMResGroup, '/')[4])]",
+      "name": "[format('c_DsktpRead_{0}', replace(replace(split(parameters('HostPoolInfo')[copyIndex()].colVMResGroup, '/')[4], '(', '-'), ')', '-'))]",
       "subscriptionId": "[split(parameters('HostPoolInfo')[copyIndex()].colVMResGroup, '/')[2]]",
       "resourceGroup": "[split(parameters('HostPoolInfo')[copyIndex()].colVMResGroup, '/')[4]]",
       "properties": {
@@ -6371,7 +6371,7 @@
       "condition": "[parameters('AllResourcesSameRG')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
-      "name": "[format('c_DsktpRead_{0}', split(parameters('AVDResourceGroupId'), '/')[4])]",
+      "name": "[format('c_DsktpRead_{0}', replace(replace(split(parameters('AVDResourceGroupId'), '/')[4], '(', '-'), ')', '-'))]",
       "subscriptionId": "[split(parameters('AVDResourceGroupId'), '/')[2]]",
       "resourceGroup": "[split(parameters('AVDResourceGroupId'), '/')[4]]",
       "properties": {
@@ -7546,7 +7546,7 @@
       "dependsOn": [
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('ResourceGroupName')), 'Microsoft.Resources/deployments', format('c_AutomtnAcct-{0}', variables('AutomationAccountName')))]",
         "roleAssignment_AutoAcctDesktopRead",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', split(parameters('AVDResourceGroupId'), '/')[2], split(parameters('AVDResourceGroupId'), '/')[4]), 'Microsoft.Resources/deployments', format('c_DsktpRead_{0}', split(parameters('AVDResourceGroupId'), '/')[4]))]"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', split(parameters('AVDResourceGroupId'), '/')[2], split(parameters('AVDResourceGroupId'), '/')[4]), 'Microsoft.Resources/deployments', format('c_DsktpRead_{0}', replace(replace(split(parameters('AVDResourceGroupId'), '/')[4], '(', '-'), ')', '-')))]"
       ]
     },
     {
@@ -8145,7 +8145,7 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
-      "name": "[format('c_LogContrib_{0}', split(parameters('LogAnalyticsWorkspaceResourceId'), '/')[4])]",
+      "name": "[format('c_LogContrib_{0}', replace(replace(split(parameters('LogAnalyticsWorkspaceResourceId'), '/')[4], '(', '-'), ')', '-'))]",
       "subscriptionId": "[split(parameters('LogAnalyticsWorkspaceResourceId'), '/')[2]]",
       "resourceGroup": "[split(parameters('LogAnalyticsWorkspaceResourceId'), '/')[4]]",
       "properties": {
@@ -8736,7 +8736,7 @@
       },
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
-      "name": "[format('c_StorReader_{0}', split(variables('StorAcctsSubRGs')[copyIndex()], ',')[1])]",
+      "name": "[format('c_StorReader_{0}', replace(replace(split(variables('StorAcctsSubRGs')[copyIndex()], ',')[1], '(', '-'), ')', '-'))]",
       "subscriptionId": "[split(variables('StorAcctsSubRGs')[copyIndex()], ',')[0]]",
       "resourceGroup": "[split(variables('StorAcctsSubRGs')[copyIndex()], ',')[1]]",
       "properties": {
@@ -9393,7 +9393,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.47.16.16243",
-              "templateHash": "2800890525456347222"
+              "templateHash": "4268148956689991174"
             }
           },
           "parameters": {
@@ -9983,7 +9983,7 @@
               "condition": "[not(parameters('AllResourcesSameRG'))]",
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2025-04-01",
-              "name": "[if(not(parameters('AllResourcesSameRG')), format('lnk_VMMtrcAlrts_m_{0}', split(parameters('HostPoolInfo')[range(0, length(parameters('HostPoolInfo')))[copyIndex()]].colHostPoolName, '/')[8]), 'lnk_VMMtrcAlrts_m_NA')]",
+              "name": "[if(not(parameters('AllResourcesSameRG')), format('lnk_VMMtrcAlrts_m_{0}', replace(replace(split(parameters('HostPoolInfo')[range(0, length(parameters('HostPoolInfo')))[copyIndex()]].colHostPoolName, '/')[8], ' ', '-'), '@', '-')), 'lnk_VMMtrcAlrts_m_NA')]",
               "properties": {
                 "expressionEvaluationOptions": {
                   "scope": "inner"
@@ -10018,7 +10018,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.47.16.16243",
-                      "templateHash": "16840954977404276117"
+                      "templateHash": "4201128565920122143"
                     }
                   },
                   "parameters": {
@@ -10048,7 +10048,8 @@
                     }
                   },
                   "variables": {
-                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]"
+                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]",
+                    "HostPoolDeploymentName": "[replace(replace(variables('HostPoolResourceName'), ' ', '-'), '@', '-')]"
                   },
                   "resources": [
                     {
@@ -10058,7 +10059,7 @@
                       },
                       "type": "Microsoft.Resources/deployments",
                       "apiVersion": "2025-04-01",
-                      "name": "[format('c_{0}-{1}', replace(parameters('MetricAlerts').virtualMachines[range(0, length(parameters('MetricAlerts').virtualMachines))[copyIndex()]].name, 'xHostPoolNamex', variables('HostPoolResourceName')), parameters('Environment'))]",
+                      "name": "[format('c_{0}-{1}', replace(parameters('MetricAlerts').virtualMachines[range(0, length(parameters('MetricAlerts').virtualMachines))[copyIndex()]].name, 'xHostPoolNamex', variables('HostPoolDeploymentName')), parameters('Environment'))]",
                       "properties": {
                         "expressionEvaluationOptions": {
                           "scope": "inner"
@@ -10653,7 +10654,7 @@
               "condition": "[parameters('AllResourcesSameRG')]",
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2025-04-01",
-              "name": "[format('lnk_VMMtrcAlrts_s_{0}', split(parameters('HostPools')[range(0, length(parameters('HostPools')))[copyIndex()]], '/')[8])]",
+              "name": "[format('lnk_VMMtrcAlrts_s_{0}', replace(replace(split(parameters('HostPools')[range(0, length(parameters('HostPools')))[copyIndex()]], '/')[8], ' ', '-'), '@', '-'))]",
               "properties": {
                 "expressionEvaluationOptions": {
                   "scope": "inner"
@@ -10690,7 +10691,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.47.16.16243",
-                      "templateHash": "16840954977404276117"
+                      "templateHash": "4201128565920122143"
                     }
                   },
                   "parameters": {
@@ -10720,7 +10721,8 @@
                     }
                   },
                   "variables": {
-                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]"
+                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]",
+                    "HostPoolDeploymentName": "[replace(replace(variables('HostPoolResourceName'), ' ', '-'), '@', '-')]"
                   },
                   "resources": [
                     {
@@ -10730,7 +10732,7 @@
                       },
                       "type": "Microsoft.Resources/deployments",
                       "apiVersion": "2025-04-01",
-                      "name": "[format('c_{0}-{1}', replace(parameters('MetricAlerts').virtualMachines[range(0, length(parameters('MetricAlerts').virtualMachines))[copyIndex()]].name, 'xHostPoolNamex', variables('HostPoolResourceName')), parameters('Environment'))]",
+                      "name": "[format('c_{0}-{1}', replace(parameters('MetricAlerts').virtualMachines[range(0, length(parameters('MetricAlerts').virtualMachines))[copyIndex()]].name, 'xHostPoolNamex', variables('HostPoolDeploymentName')), parameters('Environment'))]",
                       "properties": {
                         "expressionEvaluationOptions": {
                           "scope": "inner"
@@ -13896,7 +13898,7 @@
               "condition": "[not(parameters('AllResourcesSameRG'))]",
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2025-04-01",
-              "name": "[format('lnk_HPAlrts-{0}', split(parameters('HostPoolInfo')[copyIndex()].colHostPoolName, '/')[8])]",
+              "name": "[format('lnk_HPAlrts-{0}', replace(replace(split(parameters('HostPoolInfo')[copyIndex()].colHostPoolName, '/')[8], ' ', '-'), '@', '-'))]",
               "properties": {
                 "expressionEvaluationOptions": {
                   "scope": "inner"
@@ -13933,7 +13935,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.47.16.16243",
-                      "templateHash": "16860463543945399920"
+                      "templateHash": "15255992987419864421"
                     }
                   },
                   "parameters": {
@@ -13963,7 +13965,8 @@
                     }
                   },
                   "variables": {
-                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]"
+                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]",
+                    "HostPoolDeploymentName": "[replace(replace(variables('HostPoolResourceName'), ' ', '-'), '@', '-')]"
                   },
                   "resources": [
                     {
@@ -13973,7 +13976,7 @@
                       },
                       "type": "Microsoft.Resources/deployments",
                       "apiVersion": "2025-04-01",
-                      "name": "[format('c_{0}-{1}', replace(parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].name, 'xHostPoolNamex', variables('HostPoolResourceName')), parameters('Environment'))]",
+                      "name": "[format('c_{0}-{1}', replace(parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].name, 'xHostPoolNamex', variables('HostPoolDeploymentName')), parameters('Environment'))]",
                       "properties": {
                         "expressionEvaluationOptions": {
                           "scope": "inner"
@@ -14572,7 +14575,7 @@
               "condition": "[parameters('AllResourcesSameRG')]",
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2025-04-01",
-              "name": "[format('lnk_HPAlrts-{0}', split(parameters('HostPools')[copyIndex()], '/')[8])]",
+              "name": "[format('lnk_HPAlrts-{0}', replace(replace(split(parameters('HostPools')[copyIndex()], '/')[8], ' ', '-'), '@', '-'))]",
               "properties": {
                 "expressionEvaluationOptions": {
                   "scope": "inner"
@@ -14609,7 +14612,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.47.16.16243",
-                      "templateHash": "16860463543945399920"
+                      "templateHash": "15255992987419864421"
                     }
                   },
                   "parameters": {
@@ -14639,7 +14642,8 @@
                     }
                   },
                   "variables": {
-                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]"
+                    "HostPoolResourceName": "[if(less(length(parameters('HostPoolName')), 20), parameters('HostPoolName'), skip(parameters('HostPoolName'), sub(length(parameters('HostPoolName')), 20)))]",
+                    "HostPoolDeploymentName": "[replace(replace(variables('HostPoolResourceName'), ' ', '-'), '@', '-')]"
                   },
                   "resources": [
                     {
@@ -14649,7 +14653,7 @@
                       },
                       "type": "Microsoft.Resources/deployments",
                       "apiVersion": "2025-04-01",
-                      "name": "[format('c_{0}-{1}', replace(parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].name, 'xHostPoolNamex', variables('HostPoolResourceName')), parameters('Environment'))]",
+                      "name": "[format('c_{0}-{1}', replace(parameters('LogAlertsHostPool')[range(0, length(parameters('LogAlertsHostPool')))[copyIndex()]].name, 'xHostPoolNamex', variables('HostPoolDeploymentName')), parameters('Environment'))]",
                       "properties": {
                         "expressionEvaluationOptions": {
                           "scope": "inner"
@@ -15752,7 +15756,7 @@
       "dependsOn": [
         "[subscriptionResourceId('Microsoft.Resources/deployments', parameters('ResourceGroupName'))]",
         "roleAssignment_AutoAcctDesktopRead",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', split(parameters('LogAnalyticsWorkspaceResourceId'), '/')[2], split(parameters('LogAnalyticsWorkspaceResourceId'), '/')[4]), 'Microsoft.Resources/deployments', format('c_LogContrib_{0}', split(parameters('LogAnalyticsWorkspaceResourceId'), '/')[4]))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', split(parameters('LogAnalyticsWorkspaceResourceId'), '/')[2], split(parameters('LogAnalyticsWorkspaceResourceId'), '/')[4]), 'Microsoft.Resources/deployments', format('c_LogContrib_{0}', replace(replace(split(parameters('LogAnalyticsWorkspaceResourceId'), '/')[4], '(', '-'), ')', '-')))]",
         "roleAssignment_Storage"
       ]
     }

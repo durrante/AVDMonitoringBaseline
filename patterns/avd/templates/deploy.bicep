@@ -85,7 +85,7 @@ param ANFVolumeResourceIds array = []
 param Tags object = {}
 
 var ActionGroupName = 'ag-avdmetrics-${Environment}-${Location}-${uniqueString(subscription().displayName)}'
-var AlertDescriptionHeader = empty(CustomerName) ? 'Automated AVD Alert Deployment Solution (v2.7.0)\n' : 'Customer: ${CustomerName}\nAutomated AVD Alert Deployment Solution (v2.7.0)\n' // DESCRIPTION HEADER AND VERSION <-----------------------------
+var AlertDescriptionHeader = empty(CustomerName) ? 'Automated AVD Alert Deployment Solution (v2.7.1)\n' : 'Customer: ${CustomerName}\nAutomated AVD Alert Deployment Solution (v2.7.1)\n' // DESCRIPTION HEADER AND VERSION <-----------------------------
 var AutomationAccountName = 'aa-avdmetrics-${Environment}-${Location}-${AlertNamePrefix}'
 var CloudEnvironment = environment().name
 var ResourceGroupCreate = ResourceGroupStatus == 'New' ? true : false
@@ -3295,12 +3295,15 @@ module automationAccount 'carml/1.3.0/Microsoft.Automation/automationAccounts/de
   dependsOn: ResourceGroupCreate ? [resourceGroupAVDMetricsCreate] : [resourceGroupAVDMetricsExisting]
 }
 
+// Role assignment deployment names below replace '(' and ')' in resource group names with '-', as resource
+// group names allow them and deployment names do not.
+
 // Assign role to Automation Account for Desktop Virtualization Reader to account for all AVD VMs if in different Resource Groups
 // (Needed for Automation Account)
 module roleAssignment_AutoAcctDesktopRead 'carml/1.3.0/Microsoft.Authorization/roleAssignments/resourceGroup/deploy.bicep' = [
   for RG in HostPoolInfo: if (!AllResourcesSameRG) {
     scope: resourceGroup(split(RG.colVMResGroup, '/')[2], split(RG.colVMResGroup, '/')[4])
-    name: 'c_DsktpRead_${split(RG.colVMResGroup, '/')[4]}'
+    name: 'c_DsktpRead_${replace(replace(split(RG.colVMResGroup, '/')[4], '(', '-'), ')', '-')}'
     params: {
       enableDefaultTelemetry: false
       principalId: automationAccount.outputs.systemAssignedPrincipalId
@@ -3318,7 +3321,7 @@ module roleAssignment_AutoAcctDesktopRead 'carml/1.3.0/Microsoft.Authorization/r
 // (Needed for Automation Account)
 module roleAssignment_AutoAcctDesktopReadSameRG 'carml/1.3.0/Microsoft.Authorization/roleAssignments/resourceGroup/deploy.bicep' = if (AllResourcesSameRG) {
     scope: resourceGroup(split(AVDResourceGroupId, '/')[2], split(AVDResourceGroupId, '/')[4])
-    name: 'c_DsktpRead_${split(AVDResourceGroupId, '/')[4]}'
+    name: 'c_DsktpRead_${replace(replace(split(AVDResourceGroupId, '/')[4], '(', '-'), ')', '-')}'
     params: {
       enableDefaultTelemetry: false
       principalId: automationAccount.outputs.systemAssignedPrincipalId
@@ -3377,7 +3380,7 @@ module roleAssignment_AutoAcctDesktopReadScalingPlanRGs 'carml/1.3.0/Microsoft.A
 // (Needed for Automation Account)
 module roleAssignment_LogAnalytics 'carml/1.3.0/Microsoft.Authorization/roleAssignments/resourceGroup/deploy.bicep' = {
   scope: resourceGroup(split(LogAnalyticsWorkspaceResourceId, '/')[2], split(LogAnalyticsWorkspaceResourceId, '/')[4])
-  name: 'c_LogContrib_${split(LogAnalyticsWorkspaceResourceId, '/')[4]}'
+  name: 'c_LogContrib_${replace(replace(split(LogAnalyticsWorkspaceResourceId, '/')[4], '(', '-'), ')', '-')}'
   params: {
     enableDefaultTelemetry: false
     principalId: automationAccount.outputs.systemAssignedPrincipalId
@@ -3395,7 +3398,7 @@ module roleAssignment_LogAnalytics 'carml/1.3.0/Microsoft.Authorization/roleAssi
 module roleAssignment_Storage 'carml/1.3.0/Microsoft.Authorization/roleAssignments/resourceGroup/deploy.bicep' = [
   for StorAcctInfo in StorAcctsSubRGs: {
     scope: resourceGroup(split(StorAcctInfo, ',')[0],split(StorAcctInfo, ',')[1])
-    name: 'c_StorReader_${split(StorAcctInfo, ',')[1]}'
+    name: 'c_StorReader_${replace(replace(split(StorAcctInfo, ',')[1], '(', '-'), ')', '-')}'
     params: {
       enableDefaultTelemetry: false
       principalId: automationAccount.outputs.systemAssignedPrincipalId
